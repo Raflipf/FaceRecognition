@@ -162,6 +162,46 @@ export const AddPatientComponent = {
                                     </button>
                                 </div>
 
+                                 <div class="photos-preview-section" style="margin-top: 1.5rem;">
+                                    <h4 style="text-align: center; margin-bottom: 1rem; color: #4a5568;">
+                                        <i class="fas fa-images"></i>
+                                        Foto yang Diambil (<span id="photoCounter">0</span>/5)
+                                    </h4>
+                                    
+                                    <div class="photos-grid" id="photoContainer">
+                                        <div class="photo-slot" id="slot1">
+                                            <span class="slot-number">1</span>
+                                            <div class="slot-placeholder">
+                                                <i class="fas fa-camera"></i>
+                                            </div>
+                                        </div>
+                                        <div class="photo-slot" id="slot2">
+                                            <span class="slot-number">2</span>
+                                            <div class="slot-placeholder">
+                                                <i class="fas fa-camera"></i>
+                                            </div>
+                                        </div>
+                                        <div class="photo-slot" id="slot3">
+                                            <span class="slot-number">3</span>
+                                            <div class="slot-placeholder">
+                                                <i class="fas fa-camera"></i>
+                                            </div>
+                                        </div>
+                                        <div class="photo-slot" id="slot4">
+                                            <span class="slot-number">4</span>
+                                            <div class="slot-placeholder">
+                                                <i class="fas fa-camera"></i>
+                                            </div>
+                                        </div>
+                                        <div class="photo-slot" id="slot5">
+                                            <span class="slot-number">5</span>
+                                            <div class="slot-placeholder">
+                                                <i class="fas fa-camera"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
                                 <div style="text-align: center; margin-top: 1rem;">
                                     <button type="button" id="startPhotoBtn" class="btn btn-primary">
                                         <i class="fas fa-video"></i>
@@ -195,10 +235,12 @@ export const AddPatientComponent = {
         `;
     },
 
+
     init(app) {
         this.app = app;
         this.currentStream = null;
         this.capturedPhotoData = null;
+        this.capturedPhotos = []; // Array untuk menyimpan 5 foto
         
         this.setupEventListeners();
         this.setupValidation();
@@ -249,6 +291,8 @@ export const AddPatientComponent = {
             document.getElementById('startPhotoBtn').style.display = 'none';
             document.getElementById('stopPhotoBtn').style.display = 'inline-flex';
             
+            this.updateCaptureButton();
+            
         } catch (error) {
             this.app.showNotification('Gagal mengakses kamera: ' + error.message, 'error');
         }
@@ -271,32 +315,94 @@ export const AddPatientComponent = {
         const video = document.getElementById('photoCamera');
         const canvas = document.getElementById('photoCanvas');
         const capturedPhoto = document.getElementById('capturedPhoto');
-        
-        // Set canvas size to match video
+
+        // Pastikan array foto ada
+        if (!this.capturedPhotos) this.capturedPhotos = [];
+
+        if (this.capturedPhotos.length >= 5) {
+            this.app.showNotification('Sudah mengambil 5 foto!', 'info');
+            return;
+        }
+
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        
-        // Draw video frame to canvas
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        // Convert canvas to image data
-        this.capturedPhotoData = canvas.toDataURL('image/jpeg', 0.8);
-        capturedPhoto.src = this.capturedPhotoData;
-        
-        // Stop camera and show captured photo
-        this.stopPhotoCapture();
+
+        const photoData = canvas.toDataURL('image/jpeg', 0.8);
+        this.capturedPhotos.push(photoData);
+
+        this.capturedPhotoData = photoData;
+
+        capturedPhoto.src = photoData;
+        capturedPhoto.style.display = 'block';
+
+        this.updatePhotoPreview();
+        this.updateCaptureButton();
+        this.app.showNotification(`Foto ${this.capturedPhotos.length}/5 berhasil diambil`, 'success');
+
+        if (this.capturedPhotos.length === 5) {
+            this.stopPhotoCapture();
+            this.app.showNotification('Selesai! Sudah mengambil 5 foto untuk face recognition', 'success');
+        }
+
         document.getElementById('photoPlaceholder').style.display = 'none';
-        document.getElementById('capturedPhoto').style.display = 'block';
         document.getElementById('retakePhotoBtn').style.display = 'inline-flex';
     },
 
+    updateCaptureButton() {
+        const captureBtn = document.getElementById('photoCapture');
+        const count = this.capturedPhotos ? this.capturedPhotos.length : 0;
+        
+        if (count >= 5) {
+            captureBtn.textContent = 'Selesai (5/5)';
+            captureBtn.disabled = true;
+        } else {
+            captureBtn.textContent = `Ambil Foto (${count}/5)`;
+            captureBtn.disabled = false;
+        }
+    },
+
+    updatePhotoPreview() {
+        const photoContainer = document.getElementById('photoContainer');
+        if (photoContainer) {
+            photoContainer.innerHTML = '';
+            this.capturedPhotos.forEach((photo, index) => {
+                const img = document.createElement('img');
+                img.src = photo;
+                img.style.width = '80px';
+                img.style.height = '80px';
+                img.style.objectFit = 'cover';
+                img.style.margin = '5px';
+                img.style.border = '2px solid #007bff';
+                img.style.borderRadius = '5px';
+                img.title = `Foto ${index + 1}`;
+                photoContainer.appendChild(img);
+            });
+        }
+    },
+
     retakePhoto() {
+        // Reset semua foto
+        this.capturedPhotos = [];
         this.capturedPhotoData = null;
+        
+        // Reset UI
         document.getElementById('capturedPhoto').style.display = 'none';
         document.getElementById('photoPlaceholder').style.display = 'flex';
         document.getElementById('retakePhotoBtn').style.display = 'none';
         document.getElementById('startPhotoBtn').style.display = 'inline-flex';
+        
+        // Reset preview container
+        const photoContainer = document.getElementById('photoContainer');
+        if (photoContainer) {
+            photoContainer.innerHTML = '';
+        }
+        
+        // Reset tombol capture
+        this.updateCaptureButton();
+        
+        this.app.showNotification('Semua foto dihapus. Silahkan ambil foto ulang.', 'info');
     },
 
     validateForm() {
@@ -330,9 +436,9 @@ export const AddPatientComponent = {
             errors.push('NIK sudah terdaftar dalam sistem');
         }
 
-        // Photo validation
-        if (!this.capturedPhotoData) {
-            errors.push('Foto pasien diperlukan untuk face recognition');
+        // Photo validation - pastikan ada 5 foto
+        if (!this.capturedPhotos || this.capturedPhotos.length < 5) {
+            errors.push('Diperlukan 5 foto wajah pasien untuk face recognition');
         }
 
         return errors;
@@ -370,7 +476,8 @@ export const AddPatientComponent = {
             email: formData.get('email').trim() || null,
             address: formData.get('address').trim(),
             emergencyContact: formData.get('emergencyContact').trim() || null,
-            photo: this.capturedPhotoData,
+            photo: this.capturedPhotoData, // Foto terakhir untuk preview
+            photos: this.capturedPhotos,   // Semua 5 foto untuk face recognition
             registrationDate: new Date().toISOString(),
             status: 'active'
         };
@@ -385,7 +492,7 @@ export const AddPatientComponent = {
         // Show success message
         this.app.showModal(
             'Pasien Berhasil Ditambahkan',
-            `Pasien ${newPatient.name} telah berhasil didaftarkan dalam sistem.\n\nNIK: ${newPatient.nik}`,
+            `Pasien ${newPatient.name} telah berhasil didaftarkan dalam sistem dengan 5 foto untuk face recognition.\n\nNIK: ${newPatient.nik}`,
             () => {
                 this.app.router.navigate('dashboard');
             }
