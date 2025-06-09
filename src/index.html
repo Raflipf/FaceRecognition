@@ -8,9 +8,13 @@
     rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
   />
+  <link
+    href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
   <style>
     #sidebar {
-      display: none; /* Hidden by default */
+      display: none; 
       position: fixed;
       top: 0;
       left: 0;
@@ -90,14 +94,12 @@
       background: hsl(217 91% 60%);
     }
 
-    /* Media queries for responsiveness */
+
     @media (max-width: 768px) {
-      /* Hide top navbar header */
       header.header {
         display: none !important;
       }
 
-      /* Show sidebar and toggle button */
       #sidebar {
         display: block;
       }
@@ -106,12 +108,10 @@
         display: flex;
       }
 
-      /* Ensure page content respects sidebar width if sidebar active */
       body.sidebar-open {
         overflow-x: hidden;
       }
 
-      /* Optional: Add overlay to dim rest of page when sidebar is open */
       #sidebarOverlay {
         display: none;
         position: fixed;
@@ -133,26 +133,30 @@
 </head>
 <body>
   <!-- EXISTING HEADER NAVBAR -->
-  <header class="header" id="header" style="display: none;">
-    <div class="container">
-      <div class="nav-brand">
-        <i class="fas fa-hospital"></i> <span>Hospital Management</span>
+  <header class="header navbar navbar-expand-lg navbar-light bg-white shadow-sm border-bottom" id="header" style="display: none;">
+    <div class="container-fluid px-4">
+      <div class="navbar-brand d-flex align-items-center fw-bold text-primary" style="font-size: 1.5rem;">
+        <i class="fas fa-hospital-alt me-3" style="font-size: 2rem; color: #0d6efd;"></i> 
+        <div class="d-flex flex-column">
+          <span style="color: #0d6efd; line-height: 1.2;">Hospital</span>
+          <span style="color: #0d6efd; line-height: 1.2;">Management</span>
+        </div>
       </div>
-      <nav class="nav-menu">
-        <a href="#dashboard" class="nav-link active" data-route="dashboard"
-          ><i class="fas fa-tachometer-alt"></i> Dashboard </a
+      <nav class="navbar-nav d-flex flex-row align-items-center ms-auto">
+        <a href="#dashboard" class="nav-link active me-3 d-flex align-items-center" data-route="dashboard"
+          ><i class="fas fa-tachometer-alt me-1"></i> Dashboard </a
         >
-        <a href="#face-recognition" class="nav-link" data-route="face-recognition"
-          ><i class="fas fa-camera"></i> Face Recognition </a
+        <a href="#face-recognition" class="nav-link me-3 d-flex align-items-center" data-route="face-recognition"
+          ><i class="fas fa-camera me-1"></i> Face Recognition </a
         >
-        <a href="#patients" class="nav-link" data-route="patients"
-          ><i class="fas fa-users"></i> Daftar Pasien </a
+        <a href="#patients" class="nav-link me-3 d-flex align-items-center" data-route="patients"
+          ><i class="fas fa-users me-1"></i> Daftar Pasien </a
         >
-        <a href="#add-patient" class="nav-link" data-route="add-patient"
-          ><i class="fas fa-user-plus"></i> Tambah Pasien </a
+        <a href="#add-patient" class="nav-link me-3 d-flex align-items-center" data-route="add-patient"
+          ><i class="fas fa-user-plus me-1"></i> Tambah Pasien </a
         >
-        <a href="#queue" class="nav-link" data-route="queue"
-          ><i class="fas fa-list-ol"></i> Antrian </a
+        <a href="#queue" class="nav-link me-3 d-flex align-items-center" data-route="queue"
+          ><i class="fas fa-list-ol me-1"></i> Antrian </a
         >
         <button class="logout-btn" id="logoutBtn">
           <i class="fas fa-sign-out-alt"></i> Logout
@@ -168,7 +172,11 @@
 
   <div id="sidebar" aria-label="Sidebar navigation menu" role="navigation">
     <div class="sidebar-brand">
-      <i class="fas fa-hospital"></i> <span>Hospital Management</span>
+      <i class="fas fa-hospital-alt me-2" style="font-size: 1.5rem; color: hsl(210 79% 46%);"></i> 
+      <div class="d-flex flex-column">
+        <span style="color: hsl(210 79% 46%); line-height: 1.2; font-size: 1rem;">Hospital</span>
+        <span style="color: hsl(210 79% 46%); line-height: 1.2; font-size: 1rem;">Management</span>
+      </div>
     </div>
     <nav class="sidebar-menu">
       <a href="#dashboard" class="nav-link active" data-route="dashboard"
@@ -197,38 +205,43 @@
 
   <!-- EXISTING MAIN CONTENT -->
   <main class="main-content">
-    <div class="container">
+    <div class="container-fluid">
       <div id="app-content"></div>
     </div>
   </main>
 
   <!-- EXISTING LOADING SPINNER -->
-  <div class="loading-spinner" id="loadingSpinner" style="display: none;">
-    <div class="spinner">
-      <i class="fas fa-spinner fa-spin"></i>
-      <p>Memuat...</p>
+  <div class="loading-spinner position-fixed top-50 start-50 translate-middle" id="loadingSpinner" style="display: none; z-index: 9999;">
+    <div class="spinner text-center">
+      <i class="fas fa-spinner fa-spin fs-1 text-primary"></i>
+      <p class="mt-2">Memuat...</p>
     </div>
   </div>
 
   <!-- EXISTING MODAL -->
-  <div class="modal-overlay" id="modalOverlay" style="display: none;">
-    <div class="modal">
-      <div class="modal-header">
-        <h3 id="modalTitle">Notifikasi</h3>
-        <button class="modal-close" id="modalClose">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-      <div class="modal-body">
-        <p id="modalMessage"></p>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-primary" id="modalConfirm">OK</button>
-        <button class="btn btn-secondary" id="modalCancel" style="display: none;">Batal</button>
+  <div class="modal-overlay" id="modalOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1050; align-items: center; justify-content: center;">
+    <div class="modal" style="display: block; position: relative; background: none;">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalTitle">Notifikasi</h5>
+            <button type="button" class="btn-close" id="modalClose" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p id="modalMessage" class="mb-0"></p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-primary" id="modalConfirm">OK</button>
+            <button class="btn btn-secondary" id="modalCancel" style="display: none;">Batal</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
+  <!-- Bootstrap JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+  
   <script>
     // --- ADDITION: Sidebar toggle script ---
     (() => {
@@ -279,4 +292,3 @@
   </script>
 </body>
 </html>
-
