@@ -1,82 +1,282 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Manajemen Pasien Rumah Sakit</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sistem Manajemen Pasien Rumah Sakit</title>
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+  />
+  <style>
+    #sidebar {
+      display: none; /* Hidden by default */
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 250px;
+      height: 100vh;
+      background-color: #ffffff;
+      box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+      padding-top: 1.5rem;
+      z-index: 1500;
+      overflow-y: auto;
+      border-right: 1px solid hsl(210 11% 91%);
+      transition: transform 0.3s ease;
+      transform: translateX(-100%);
+    }
+
+    #sidebar.active {
+      transform: translateX(0);
+    }
+
+    #sidebar .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.25rem;
+      font-weight: bold;
+      color: hsl(210 79% 46%);
+      padding: 0 1rem 1rem 1rem;
+      border-bottom: 1px solid hsl(210 11% 91%);
+    }
+
+    #sidebar .sidebar-menu {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding: 1rem;
+    }
+
+    #sidebar .sidebar-menu a {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      text-decoration: none;
+      color: hsl(210 11% 15%);
+      border-radius: 0.5rem;
+      transition: background-color 0.3s ease, color 0.3s ease;
+      font-weight: 600;
+    }
+
+    #sidebar .sidebar-menu a:hover,
+    #sidebar .sidebar-menu a.active {
+      background-color: hsl(210 79% 46%);
+      color: #fff;
+    }
+
+    /* Hamburger button for toggling sidebar */
+    #sidebarToggle {
+      display: none;
+      position: fixed;
+      top: 1rem;
+      left: 1rem;
+      z-index: 1600;
+      background: hsl(210 79% 46%);
+      border: none;
+      border-radius: 0.375rem;
+      color: white;
+      width: 40px;
+      height: 40px;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      transition: background-color 0.3s ease;
+    }
+
+    #sidebarToggle:hover {
+      background: hsl(217 91% 60%);
+    }
+
+    /* Media queries for responsiveness */
+    @media (max-width: 768px) {
+      /* Hide top navbar header */
+      header.header {
+        display: none !important;
+      }
+
+      /* Show sidebar and toggle button */
+      #sidebar {
+        display: block;
+      }
+
+      #sidebarToggle {
+        display: flex;
+      }
+
+      /* Ensure page content respects sidebar width if sidebar active */
+      body.sidebar-open {
+        overflow-x: hidden;
+      }
+
+      /* Optional: Add overlay to dim rest of page when sidebar is open */
+      #sidebarOverlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.3);
+        z-index: 1400;
+        transition: opacity 0.3s ease;
+      }
+
+      body.sidebar-open #sidebarOverlay {
+        display: block;
+      }
+    }
+
+  </style>
 </head>
 <body>
-    <!-- Navigation Header -->
-    <header class="header" id="header" style="display: none;">
-        <div class="container">
-            <div class="nav-brand">
-                <i class="fas fa-hospital"></i>
-                <span>Hospital Management</span>
-            </div>
-            <nav class="nav-menu">
-                <a href="#dashboard" class="nav-link active" data-route="dashboard">
-                    <i class="fas fa-tachometer-alt"></i>
-                    Dashboard
-                </a>
-                <a href="#face-recognition" class="nav-link" data-route="face-recognition">
-                    <i class="fas fa-camera"></i>
-                    Face Recognition
-                </a>
-                <a href="#patients" class="nav-link" data-route="patients">
-                    <i class="fas fa-users"></i>
-                    Daftar Pasien
-                </a>
-                <a href="#add-patient" class="nav-link" data-route="add-patient">
-                    <i class="fas fa-user-plus"></i>
-                    Tambah Pasien
-                </a>
-                <a href="#queue" class="nav-link" data-route="queue">
-                    <i class="fas fa-list-ol"></i>
-                    Antrian
-                </a>
-                <button class="logout-btn" id="logoutBtn">
-                    <i class="fas fa-sign-out-alt"></i>
-                    Logout
-                </button>
-            </nav>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="main-content">
-        <div class="container">
-            <div id="app-content">
-                <!-- Content will be dynamically loaded here -->
-            </div>
-        </div>
-    </main>
-
-    <!-- Loading Spinner -->
-    <div class="loading-spinner" id="loadingSpinner" style="display: none;">
-        <div class="spinner">
-            <i class="fas fa-spinner fa-spin"></i>
-            <p>Memuat...</p>
-        </div>
+  <!-- EXISTING HEADER NAVBAR -->
+  <header class="header" id="header" style="display: none;">
+    <div class="container">
+      <div class="nav-brand">
+        <i class="fas fa-hospital"></i> <span>Hospital Management</span>
+      </div>
+      <nav class="nav-menu">
+        <a href="#dashboard" class="nav-link active" data-route="dashboard"
+          ><i class="fas fa-tachometer-alt"></i> Dashboard </a
+        >
+        <a href="#face-recognition" class="nav-link" data-route="face-recognition"
+          ><i class="fas fa-camera"></i> Face Recognition </a
+        >
+        <a href="#patients" class="nav-link" data-route="patients"
+          ><i class="fas fa-users"></i> Daftar Pasien </a
+        >
+        <a href="#add-patient" class="nav-link" data-route="add-patient"
+          ><i class="fas fa-user-plus"></i> Tambah Pasien </a
+        >
+        <a href="#queue" class="nav-link" data-route="queue"
+          ><i class="fas fa-list-ol"></i> Antrian </a
+        >
+        <button class="logout-btn" id="logoutBtn">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
+      </nav>
     </div>
+  </header>
 
-    <!-- Modal for Notifications -->
-    <div class="modal-overlay" id="modalOverlay" style="display: none;">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 id="modalTitle">Notifikasi</h3>
-                <button class="modal-close" id="modalClose">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <p id="modalMessage"></p>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-primary" id="modalConfirm">OK</button>
-                <button class="btn btn-secondary" id="modalCancel" style="display: none;">Batal</button>
-            </div>
-        </div>
+  <!-- --- ADDITION: Mobile Sidebar Navigation --- -->
+  <button id="sidebarToggle" aria-label="Toggle navigation menu" title="Toggle navigation menu">
+    <i class="fas fa-bars"></i>
+  </button>
+
+  <div id="sidebar" aria-label="Sidebar navigation menu" role="navigation">
+    <div class="sidebar-brand">
+      <i class="fas fa-hospital"></i> <span>Hospital Management</span>
     </div>
+    <nav class="sidebar-menu">
+      <a href="#dashboard" class="nav-link active" data-route="dashboard"
+        ><i class="fas fa-tachometer-alt"></i> Dashboard</a
+      >
+      <a href="#face-recognition" class="nav-link" data-route="face-recognition"
+        ><i class="fas fa-camera"></i> Face Recognition</a
+      >
+      <a href="#patients" class="nav-link" data-route="patients"
+        ><i class="fas fa-users"></i> Daftar Pasien</a
+      >
+      <a href="#add-patient" class="nav-link" data-route="add-patient"
+        ><i class="fas fa-user-plus"></i> Tambah Pasien</a
+      >
+      <a href="#queue" class="nav-link" data-route="queue"
+        ><i class="fas fa-list-ol"></i> Antrian</a
+      >
+      <button class="logout-btn" id="logoutBtnSidebar" style="margin-top: 1rem; width: 90%; margin-left: auto; margin-right: auto;">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </button>
+    </nav>
+  </div>
+
+  <!-- Sidebar overlay to close sidebar when clicking outside -->
+  <div id="sidebarOverlay"></div>
+
+  <!-- EXISTING MAIN CONTENT -->
+  <main class="main-content">
+    <div class="container">
+      <div id="app-content"></div>
+    </div>
+  </main>
+
+  <!-- EXISTING LOADING SPINNER -->
+  <div class="loading-spinner" id="loadingSpinner" style="display: none;">
+    <div class="spinner">
+      <i class="fas fa-spinner fa-spin"></i>
+      <p>Memuat...</p>
+    </div>
+  </div>
+
+  <!-- EXISTING MODAL -->
+  <div class="modal-overlay" id="modalOverlay" style="display: none;">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modalTitle">Notifikasi</h3>
+        <button class="modal-close" id="modalClose">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p id="modalMessage"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="modalConfirm">OK</button>
+        <button class="btn btn-secondary" id="modalCancel" style="display: none;">Batal</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- ADDITION: Sidebar toggle script ---
+    (() => {
+      const sidebarToggle = document.getElementById('sidebarToggle');
+      const sidebar = document.getElementById('sidebar');
+      const sidebarOverlay = document.getElementById('sidebarOverlay');
+      const body = document.body;
+
+      function openSidebar() {
+        sidebar.classList.add('active');
+        body.classList.add('sidebar-open');
+      }
+
+      function closeSidebar() {
+        sidebar.classList.remove('active');
+        body.classList.remove('sidebar-open');
+      }
+
+      sidebarToggle.addEventListener('click', () => {
+        if (sidebar.classList.contains('active')) {
+          closeSidebar();
+        } else {
+          openSidebar();
+        }
+      });
+
+      sidebarOverlay.addEventListener('click', () => {
+        closeSidebar();
+      });
+
+      const logoutBtnMain = document.getElementById('logoutBtn');
+      const logoutBtnSidebar = document.getElementById('logoutBtnSidebar');
+
+      if (logoutBtnMain && logoutBtnSidebar) {
+        logoutBtnSidebar.addEventListener('click', () => {
+          logoutBtnMain.click();
+          closeSidebar();
+        });
+      }
+
+      sidebar.querySelectorAll('a.nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+          closeSidebar();
+        });
+      });
+
+    })();
+  </script>
 </body>
 </html>
+
