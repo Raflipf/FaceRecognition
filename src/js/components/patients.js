@@ -21,7 +21,6 @@ export const PatientsComponent = {
                         </div>
                     </div>
 
-                    <!-- Search and Filter Section -->
                     <div class="search-filter-section">
                         <div class="form-group mb-0">
                             <label class="form-label" for="searchPatients">Cari Pasien</label>
@@ -36,8 +35,9 @@ export const PatientsComponent = {
                             <label class="form-label" for="genderFilter">Filter Jenis Kelamin</label>
                             <select id="genderFilter" class="form-select">
                                 <option value="">Semua</option>
-                                <option value="M">Laki-laki</option>
-                                <option value="F">Perempuan</option>
+                                <option value="male">Laki-laki</option>
+                                <option value="female">Perempuan</option>
+                                <option value="other">Lainnya</option>
                             </select>
                         </div>
                         <div class="form-group mb-0">
@@ -60,7 +60,6 @@ export const PatientsComponent = {
                         </div>
                     </div>
 
-                    <!-- Statistics Section -->
                     <div class="queue-stats">
                         <div class="stat-card">
                             <div class="stat-number" id="totalPatients">0</div>
@@ -81,7 +80,6 @@ export const PatientsComponent = {
                     </div>
                 </div>
 
-                <!-- Toggle View Buttons -->
                 <div class="card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                         <h3>
@@ -99,7 +97,6 @@ export const PatientsComponent = {
                         </div>
                     </div>
 
-                    <!-- Table View -->
                     <div id="tableView" style="overflow-x: auto;">
                         <table class="patients-table">
                             <thead>
@@ -116,16 +113,13 @@ export const PatientsComponent = {
                                 </tr>
                             </thead>
                             <tbody id="patientsTableBody">
-                                <!-- Content will be populated by JavaScript -->
-                            </tbody>
+                                </tbody>
                         </table>
                     </div>
 
-                    <!-- Card View -->
                     <div id="cardView" style="display: none;">
                         <div id="patientsCardContainer">
-                            <!-- Content will be populated by JavaScript -->
-                        </div>
+                            </div>
                     </div>
                 </div>
             </div>
@@ -135,6 +129,7 @@ export const PatientsComponent = {
   init(app) {
     this.app = app;
     this.currentView = "table";
+    this.allPatients = [];
     this.filteredPatients = [];
 
     this.setupEventListeners();
@@ -151,15 +146,15 @@ export const PatientsComponent = {
     const cardViewBtn = document.getElementById("cardViewBtn");
     const tableViewBtn = document.getElementById("tableViewBtn");
 
-    // Search and filter events
-    [searchInput, genderFilter, bloodTypeFilter, statusFilter].forEach(
-      (element) => {
-        if (element) {
-          element.addEventListener("input", () => this.filterPatients());
-          element.addEventListener("change", () => this.filterPatients());
-        }
+    if (searchInput) {
+      searchInput.addEventListener("input", () => this.filterPatients());
+    }
+
+    [genderFilter, bloodTypeFilter, statusFilter].forEach((element) => {
+      if (element) {
+        element.addEventListener("change", () => this.filterPatients());
       }
-    );
+    });
 
     // Refresh button
     if (refreshBtn) {
@@ -184,7 +179,7 @@ export const PatientsComponent = {
       );
       this.allPatients = patients;
       this.filteredPatients = [...patients];
-      this.app.storage.set('patients', patients); // Save patients to Storage
+      this.app.storage.set("patients", patients); // Save patients to Storage
       this.renderPatients();
       this.updateStatistics();
     } catch (error) {
@@ -198,6 +193,27 @@ export const PatientsComponent = {
   },
 
   filterPatients() {
+    console.log("--- Memulai proses filter pasien ---");
+    const genderFilterElement = document.getElementById("genderFilter");
+    const genderFilterValue = genderFilterElement
+      ? genderFilterElement.value
+      : "";
+    console.log(
+      `Nilai filter jenis kelamin yang dipilih: '${genderFilterValue}'`
+    );
+
+    if (!this.allPatients || this.allPatients.length === 0) {
+      console.warn(
+        "Daftar semua pasien (this.allPatients) kosong. Tidak dapat memfilter."
+      );
+    } else {
+      console.log(`Memfilter dari total ${this.allPatients.length} pasien.`);
+      console.log(
+        "Contoh data gender dari beberapa pasien pertama:",
+        this.allPatients.slice(0, 5).map((p) => p.gender)
+      );
+    }
+
     const searchTerm =
       document.getElementById("searchPatients")?.value.toLowerCase() || "";
     const genderFilter = document.getElementById("genderFilter")?.value || "";
@@ -212,10 +228,15 @@ export const PatientsComponent = {
         (patient.nik && patient.nik.includes(searchTerm)) ||
         (patient.phone && patient.phone.includes(searchTerm));
 
-      const matchesGender =
-        !genderFilter ||
-        (patient.gender &&
-          patient.gender.toUpperCase() === genderFilter.toUpperCase());
+      const patientGender = patient.gender
+        ? patient.gender.toLowerCase()
+        : undefined;
+      const filterGender = genderFilter
+        ? genderFilter.toLowerCase()
+        : undefined;
+
+      const matchesGender = !filterGender || patientGender === filterGender;
+
       const matchesBloodType =
         !bloodTypeFilter || patient.bloodType === bloodTypeFilter;
       const matchesStatus = !statusFilter || patient.status === statusFilter;
@@ -224,6 +245,10 @@ export const PatientsComponent = {
         matchesSearch && matchesGender && matchesBloodType && matchesStatus
       );
     });
+
+    console.log(
+      `--- Proses filter selesai. Ditemukan ${this.filteredPatients.length} pasien. ---`
+    );
 
     this.renderPatients();
     this.updateFilteredCount();
@@ -271,7 +296,7 @@ export const PatientsComponent = {
                 </td>
                 <td>${patient.nik}</td>
                 <td>${this.calculateAge(patient.birthDate)} tahun</td>
-                <td>${patient.gender === "M" ? "Laki-laki" : "Perempuan"}</td>
+                <td>${this.formatGender(patient.gender)}</td>
                 <td>${patient.bloodType || "-"}</td>
                 <td>${patient.phone}</td>
                 <td>
@@ -287,14 +312,14 @@ export const PatientsComponent = {
                 </td>
                 <td>
                     <div style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
-                        <button class="btn btn-primary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" 
+                        <button class="btn btn-primary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;"
                                 onclick="patientsComponent.viewPatientDetail(${
                                   patient.id
                                 })">
                             <i class="fas fa-eye"></i>
                             Detail
                         </button>
-                        <button class="btn btn-success" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" 
+                        <button class="btn btn-success" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;"
                                 onclick="patientsComponent.addToQueue(${
                                   patient.id
                                 })">
@@ -354,14 +379,14 @@ export const PatientsComponent = {
                         </span>
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                        <button class="btn btn-primary" style="font-size: 0.875rem; padding: 0.5rem 1rem;" 
+                        <button class="btn btn-primary" style="font-size: 0.875rem; padding: 0.5rem 1rem;"
                                 onclick="patientsComponent.viewPatientDetail(${
                                   patient.id
                                 })">
                             <i class="fas fa-eye"></i>
                             Detail
                         </button>
-                        <button class="btn btn-success" style="font-size: 0.875rem; padding: 0.5rem 1rem;" 
+                        <button class="btn btn-success" style="font-size: 0.875rem; padding: 0.5rem 1rem;"
                                 onclick="patientsComponent.addToQueue(${
                                   patient.id
                                 })">
@@ -370,7 +395,7 @@ export const PatientsComponent = {
                         </button>
                     </div>
                 </div>
-                
+
                 <div class="patient-info">
                     <div class="info-item">
                         <div class="info-label">Umur</div>
@@ -380,9 +405,9 @@ export const PatientsComponent = {
                     </div>
                     <div class="info-item">
                         <div class="info-label">Jenis Kelamin</div>
-                        <div class="info-value">${
-                          patient.gender === "M" ? "Laki-laki" : "Perempuan"
-                        }</div>
+                        <div class="info-value">${this.formatGender(
+                          patient.gender
+                        )}</div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">Golongan Darah</div>
@@ -443,8 +468,12 @@ export const PatientsComponent = {
     const activePatients = patients.filter(
       (p) => p.status !== "inactive"
     ).length;
-    const malePatients = patients.filter((p) => p.gender === "M").length;
-    const femalePatients = patients.filter((p) => p.gender === "F").length;
+    const malePatients = patients.filter(
+      (p) => p.gender && p.gender.toLowerCase() === "male"
+    ).length;
+    const femalePatients = patients.filter(
+      (p) => p.gender && p.gender.toLowerCase() === "female"
+    ).length;
 
     document.getElementById("totalPatients").textContent = totalPatients;
     document.getElementById("activePatients").textContent = activePatients;
@@ -460,6 +489,7 @@ export const PatientsComponent = {
   },
 
   calculateAge(birthDate) {
+    if (!birthDate) return "-";
     const today = new Date();
     const birth = new Date(birthDate);
     let age = today.getFullYear() - birth.getFullYear();
@@ -475,8 +505,25 @@ export const PatientsComponent = {
     return age;
   },
 
+  formatGender(gender) {
+    if (!gender) return "-";
+    const lowerGender = gender.toLowerCase();
+    switch (lowerGender) {
+      case "male":
+        return "Laki-laki";
+      case "female":
+        return "Perempuan";
+      case "other":
+        return "Lainnya";
+      default:
+        return "-";
+    }
+  },
+
   viewPatientDetail(patientId) {
-    this.app.router.navigate("patient-record", { patientId: String(patientId) });
+    this.app.router.navigate("patient-record", {
+      patientId: String(patientId),
+    });
   },
 
   addToQueue(patientId) {
@@ -484,7 +531,9 @@ export const PatientsComponent = {
     const patient = this.allPatients.find((p) => p.id === patientId);
     if (patient) {
       this.app.storage.set("selectedPatientForQueue", patient);
-      this.app.router.navigate("patient-record", { patientId: String(patientId) });
+      this.app.router.navigate("patient-record", {
+        patientId: String(patientId),
+      });
     }
   },
 
