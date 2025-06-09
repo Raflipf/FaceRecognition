@@ -1,11 +1,41 @@
 // Queue Component
-import { Storage } from '../utils/storage.js';
+import { Storage } from "../utils/storage.js";
+import { getDoctors, getQueues, addQueue, updateQueue } from "../../../js/utils/api.js";
 
 export const QueueComponent = {
-    render() {
-        const stats = this.getQueueStats();
-        
-        return `
+  doctors: [],
+  queues: [],
+
+  async loadDoctors() {
+    try {
+      const token = this.app.currentUser.token;
+      this.doctors = await getDoctors(token);
+    } catch (error) {
+      this.app.showNotification(
+        "Gagal mengambil data dokter: " + error.message,
+        "error"
+      );
+      this.doctors = [];
+    }
+  },
+
+  async loadQueues() {
+    try {
+      const token = this.app.currentUser.token;
+      this.queues = await getQueues(token);
+    } catch (error) {
+      this.app.showNotification(
+        "Gagal mengambil data antrian: " + error.message,
+        "error"
+      );
+      this.queues = [];
+    }
+  },
+
+  render() {
+    const stats = this.getQueueStats();
+
+    return `
             <div class="fade-in">
                 <div class="card">
                     <div class="card-header">
@@ -68,7 +98,9 @@ export const QueueComponent = {
                         
                         <div class="form-group mb-0">
                             <label class="form-label" for="dateFilter">Filter Tanggal</label>
-                            <input type="date" id="dateFilter" class="form-input" value="${new Date().toISOString().split('T')[0]}">
+                            <input type="date" id="dateFilter" class="form-input" value="${
+                              new Date().toISOString().split("T")[0]
+                            }">
                         </div>
                     </div>
                 </div>
@@ -103,55 +135,69 @@ export const QueueComponent = {
                 </div>
             </div>
         `;
-    },
+  },
 
-    getQueueStats() {
-        const queue = this.getFilteredQueue();
-        const today = new Date().toDateString();
-        const todayQueue = queue.filter(q => new Date(q.timestamp).toDateString() === today);
-        
-        return {
-            waiting: todayQueue.filter(q => q.status === 'waiting').length,
-            examining: todayQueue.filter(q => q.status === 'examining').length,
-            completed: todayQueue.filter(q => q.status === 'completed').length,
-            total: todayQueue.length
-        };
-    },
+  getQueueStats() {
+    const queue = this.getFilteredQueue();
+    const today = new Date().toDateString();
+    const todayQueue = queue.filter(
+      (q) => new Date(q.timestamp).toDateString() === today
+    );
 
-    getFilteredQueue() {
-        const queue = Storage.get('queue') || [];
-        const doctorFilter = document.getElementById('doctorFilter')?.value || '';
-        const statusFilter = document.getElementById('statusFilter')?.value || '';
-        const dateFilter = document.getElementById('dateFilter')?.value || new Date().toISOString().split('T')[0];
-        
-        return queue.filter(q => {
-            const matchDoctor = !doctorFilter || q.doctorId.toString() === doctorFilter;
-            const matchStatus = !statusFilter || q.status === statusFilter;
-            const matchDate = !dateFilter || new Date(q.timestamp).toDateString() === new Date(dateFilter).toDateString();
-            
-            return matchDoctor && matchStatus && matchDate;
-        }).sort((a, b) => {
-            // Sort by priority first, then by timestamp
-            const priorityOrder = { emergency: 3, urgent: 2, normal: 1 };
-            const priorityDiff = (priorityOrder[b.priority] || 1) - (priorityOrder[a.priority] || 1);
-            if (priorityDiff !== 0) return priorityDiff;
-            
-            return new Date(a.timestamp) - new Date(b.timestamp);
-        });
-    },
+    return {
+      waiting: todayQueue.filter((q) => q.status === "waiting").length,
+      examining: todayQueue.filter((q) => q.status === "examining").length,
+      completed: todayQueue.filter((q) => q.status === "completed").length,
+      total: todayQueue.length,
+    };
+  },
 
-    renderDoctorFilterOptions() {
-        const doctors = Storage.get('doctors') || [];
-        return doctors.map(doctor => `
+  getFilteredQueue() {
+    const queue = Storage.get("queue") || [];
+    const doctorFilter = document.getElementById("doctorFilter")?.value || "";
+    const statusFilter = document.getElementById("statusFilter")?.value || "";
+    const dateFilter =
+      document.getElementById("dateFilter")?.value ||
+      new Date().toISOString().split("T")[0];
+
+    return queue
+      .filter((q) => {
+        const matchDoctor =
+          !doctorFilter || q.doctorId.toString() === doctorFilter;
+        const matchStatus = !statusFilter || q.status === statusFilter;
+        const matchDate =
+          !dateFilter ||
+          new Date(q.timestamp).toDateString() ===
+            new Date(dateFilter).toDateString();
+
+        return matchDoctor && matchStatus && matchDate;
+      })
+      .sort((a, b) => {
+        // Sort by priority first, then by timestamp
+        const priorityOrder = { emergency: 3, urgent: 2, normal: 1 };
+        const priorityDiff =
+          (priorityOrder[b.priority] || 1) - (priorityOrder[a.priority] || 1);
+        if (priorityDiff !== 0) return priorityDiff;
+
+        return new Date(a.timestamp) - new Date(b.timestamp);
+      });
+  },
+
+  renderDoctorFilterOptions() {
+    return this.doctors
+      .map(
+        (doctor) => `
             <option value="${doctor.id}">Dr. ${doctor.name} - ${doctor.specialty}</option>
-        `).join('');
-    },
+        `
+      )
+      .join("");
+  },
 
-    renderQueueTable() {
-        const queue = this.getFilteredQueue();
-        
-        if (queue.length === 0) {
-            return `
+  renderQueueTable() {
+    const queue = this.getFilteredQueue();
+
+    if (queue.length === 0) {
+      return `
                 <tr>
                     <td colspan="8" style="text-align: center; padding: 2rem; color: #64748b;">
                         <i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5; display: block;"></i>
@@ -159,9 +205,11 @@ export const QueueComponent = {
                     </td>
                 </tr>
             `;
-        }
+    }
 
-        return queue.map(item => `
+    return queue
+      .map(
+        (item) => `
             <tr>
                 <td>
                     <strong style="font-size: 1.2rem; color: #3b82f6;">
@@ -170,10 +218,13 @@ export const QueueComponent = {
                 </td>
                 <td>
                     <div style="font-size: 0.875rem;">
-                        ${new Date(item.timestamp).toLocaleDateString('id-ID')}
+                        ${new Date(item.timestamp).toLocaleDateString("id-ID")}
                     </div>
                     <div style="font-size: 0.75rem; color: #64748b;">
-                        ${new Date(item.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                        ${new Date(item.timestamp).toLocaleTimeString("id-ID", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                     </div>
                 </td>
                 <td>
@@ -181,15 +232,21 @@ export const QueueComponent = {
                 </td>
                 <td>
                     <div>Dr. ${item.doctorName}</div>
-                    <div style="font-size: 0.875rem; color: #64748b;">${item.doctorSpecialty}</div>
+                    <div style="font-size: 0.875rem; color: #64748b;">${
+                      item.doctorSpecialty
+                    }</div>
                 </td>
                 <td>
-                    <div style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${item.complaint}">
+                    <div style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${
+                      item.complaint
+                    }">
                         ${item.complaint}
                     </div>
                 </td>
                 <td>
-                    <span class="status-badge ${this.getPriorityClass(item.priority)}">
+                    <span class="status-badge ${this.getPriorityClass(
+                      item.priority
+                    )}">
                         ${this.getPriorityLabel(item.priority)}
                     </span>
                 </td>
@@ -204,169 +261,186 @@ export const QueueComponent = {
                     </div>
                 </td>
             </tr>
-        `).join('');
-    },
+        `
+      )
+      .join("");
+  },
 
-    getPriorityClass(priority) {
-        switch (priority) {
-            case 'emergency': return 'status-completed'; // Red/danger color
-            case 'urgent': return 'status-examining'; // Blue color
-            case 'normal': 
-            default: return 'status-waiting'; // Yellow color
-        }
-    },
+  getPriorityClass(priority) {
+    switch (priority) {
+      case "emergency":
+        return "status-completed"; // Red/danger color
+      case "urgent":
+        return "status-examining"; // Blue color
+      case "normal":
+      default:
+        return "status-waiting"; // Yellow color
+    }
+  },
 
-    getPriorityLabel(priority) {
-        switch (priority) {
-            case 'emergency': return 'Darurat';
-            case 'urgent': return 'Mendesak';
-            case 'normal': 
-            default: return 'Normal';
-        }
-    },
+  getPriorityLabel(priority) {
+    switch (priority) {
+      case "emergency":
+        return "Darurat";
+      case "urgent":
+        return "Mendesak";
+      case "normal":
+      default:
+        return "Normal";
+    }
+  },
 
-    getStatusLabel(status) {
-        switch (status) {
-            case 'waiting': return 'Menunggu';
-            case 'examining': return 'Diperiksa';
-            case 'completed': return 'Selesai';
-            default: return status;
-        }
-    },
+  getStatusLabel(status) {
+    switch (status) {
+      case "waiting":
+        return "Menunggu";
+      case "examining":
+        return "Diperiksa";
+      case "completed":
+        return "Selesai";
+      default:
+        return status;
+    }
+  },
 
-    renderActionButtons(item) {
-        switch (item.status) {
-            case 'waiting':
-                return `
+  renderActionButtons(item) {
+    switch (item.status) {
+      case "waiting":
+        return `
                     <button class="btn btn-primary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" 
                             onclick="queueComponent.startExamination(${item.id})">
                         <i class="fas fa-play"></i>
                         Mulai
                     </button>
                 `;
-            case 'examining':
-                return `
+      case "examining":
+        return `
                     <button class="btn btn-success" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" 
                             onclick="queueComponent.completeExamination(${item.id})">
                         <i class="fas fa-check"></i>
                         Selesai
                     </button>
                 `;
-            case 'completed':
-                return `
+      case "completed":
+        return `
                     <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" 
                             onclick="queueComponent.viewDetails(${item.id})">
                         <i class="fas fa-eye"></i>
                         Detail
                     </button>
                 `;
-            default:
-                return '';
+      default:
+        return "";
+    }
+  },
+
+  async init(app) {
+    this.app = app;
+    window.queueComponent = this; // Make available globally for onclick handlers
+
+    await this.loadDoctors();
+
+    this.setupEventListeners();
+    this.startAutoRefresh();
+  },
+
+  setupEventListeners() {
+    const refreshBtn = document.getElementById("refreshQueue");
+    const doctorFilter = document.getElementById("doctorFilter");
+    const statusFilter = document.getElementById("statusFilter");
+    const dateFilter = document.getElementById("dateFilter");
+
+    refreshBtn.addEventListener("click", () => this.refreshQueue());
+
+    [doctorFilter, statusFilter, dateFilter].forEach((filter) => {
+      if (filter) {
+        filter.addEventListener("change", () => this.refreshQueue());
+      }
+    });
+  },
+
+  refreshQueue() {
+    const tableBody = document.getElementById("queueTableBody");
+    const queueCount = document.getElementById("queueCount");
+
+    if (tableBody) {
+      tableBody.innerHTML = this.renderQueueTable();
+    }
+
+    if (queueCount) {
+      queueCount.textContent = `${this.getFilteredQueue().length} antrian`;
+    }
+
+    // Update stats
+    const stats = this.getQueueStats();
+    const statCards = document.querySelectorAll(".stat-card .stat-number");
+    if (statCards.length >= 4) {
+      statCards[0].textContent = stats.waiting;
+      statCards[1].textContent = stats.examining;
+      statCards[2].textContent = stats.completed;
+      statCards[3].textContent = stats.total;
+    }
+  },
+
+  startAutoRefresh() {
+    // Auto-refresh every 30 seconds
+    this.refreshInterval = setInterval(() => {
+      this.refreshQueue();
+    }, 30000);
+  },
+
+  startExamination(queueId) {
+    const queue = Storage.get("queue") || [];
+    const queueItem = queue.find((q) => q.id === queueId);
+
+    if (!queueItem) {
+      this.app.showNotification("Item antrian tidak ditemukan", "error");
+      return;
+    }
+
+    this.app.showModal(
+      "Konfirmasi",
+      `Mulai pemeriksaan untuk pasien ${queueItem.patientName}?`,
+      () => {
+        // Update status to examining
+        queueItem.status = "examining";
+        queueItem.examinationStartTime = new Date().toISOString();
+
+        // Update doctor status to busy
+        const doctors = Storage.get("doctors") || [];
+        const doctor = doctors.find((d) => d.id === queueItem.doctorId);
+        if (doctor) {
+          doctor.status = "busy";
+          Storage.set("doctors", doctors);
         }
-    },
 
-    init(app) {
-        this.app = app;
-        window.queueComponent = this; // Make available globally for onclick handlers
-        
-        this.setupEventListeners();
-        this.startAutoRefresh();
-    },
+        Storage.set("queue", queue);
+        this.refreshQueue();
 
-    setupEventListeners() {
-        const refreshBtn = document.getElementById('refreshQueue');
-        const doctorFilter = document.getElementById('doctorFilter');
-        const statusFilter = document.getElementById('statusFilter');
-        const dateFilter = document.getElementById('dateFilter');
-
-        refreshBtn.addEventListener('click', () => this.refreshQueue());
-        
-        [doctorFilter, statusFilter, dateFilter].forEach(filter => {
-            if (filter) {
-                filter.addEventListener('change', () => this.refreshQueue());
-            }
-        });
-    },
-
-    refreshQueue() {
-        const tableBody = document.getElementById('queueTableBody');
-        const queueCount = document.getElementById('queueCount');
-        
-        if (tableBody) {
-            tableBody.innerHTML = this.renderQueueTable();
-        }
-        
-        if (queueCount) {
-            queueCount.textContent = `${this.getFilteredQueue().length} antrian`;
-        }
-
-        // Update stats
-        const stats = this.getQueueStats();
-        const statCards = document.querySelectorAll('.stat-card .stat-number');
-        if (statCards.length >= 4) {
-            statCards[0].textContent = stats.waiting;
-            statCards[1].textContent = stats.examining;
-            statCards[2].textContent = stats.completed;
-            statCards[3].textContent = stats.total;
-        }
-    },
-
-    startAutoRefresh() {
-        // Auto-refresh every 30 seconds
-        this.refreshInterval = setInterval(() => {
-            this.refreshQueue();
-        }, 30000);
-    },
-
-    startExamination(queueId) {
-        const queue = Storage.get('queue') || [];
-        const queueItem = queue.find(q => q.id === queueId);
-        
-        if (!queueItem) {
-            this.app.showNotification('Item antrian tidak ditemukan', 'error');
-            return;
-        }
-
-        this.app.showModal(
-            'Konfirmasi',
-            `Mulai pemeriksaan untuk pasien ${queueItem.patientName}?`,
-            () => {
-                // Update status to examining
-                queueItem.status = 'examining';
-                queueItem.examinationStartTime = new Date().toISOString();
-                
-                // Update doctor status to busy
-                const doctors = Storage.get('doctors') || [];
-                const doctor = doctors.find(d => d.id === queueItem.doctorId);
-                if (doctor) {
-                    doctor.status = 'busy';
-                    Storage.set('doctors', doctors);
-                }
-                
-                Storage.set('queue', queue);
-                this.refreshQueue();
-                
-                this.app.showNotification(`Pemeriksaan untuk ${queueItem.patientName} telah dimulai`, 'success');
-            },
-            true
+        this.app.showNotification(
+          `Pemeriksaan untuk ${queueItem.patientName} telah dimulai`,
+          "success"
         );
-    },
+      },
+      true
+    );
+  },
 
-    completeExamination(queueId) {
-        const queue = Storage.get('queue') || [];
-        const queueItem = queue.find(q => q.id === queueId);
-        
-        if (!queueItem) {
-            this.app.showNotification('Item antrian tidak ditemukan', 'error');
-            return;
-        }
+  completeExamination(queueId) {
+    const queue = Storage.get("queue") || [];
+    const queueItem = queue.find((q) => q.id === queueId);
 
-        // Show completion form
-        this.showCompletionForm(queueItem);
-    },
+    if (!queueItem) {
+      this.app.showNotification("Item antrian tidak ditemukan", "error");
+      return;
+    }
 
-    showCompletionForm(queueItem) {
-        const modalContent = `
+    // Show completion form
+    this.showCompletionForm(queueItem);
+  },
+
+  showCompletionForm(queueItem) {
+    const modalContent = `
             <form id="completionForm">
                 <div class="form-group">
                     <label class="form-label">Diagnosis</label>
@@ -383,11 +457,11 @@ export const QueueComponent = {
             </form>
         `;
 
-        // Create custom modal
-        const modalOverlay = document.createElement('div');
-        modalOverlay.className = 'modal-overlay';
-        modalOverlay.style.display = 'flex';
-        modalOverlay.innerHTML = `
+    // Create custom modal
+    const modalOverlay = document.createElement("div");
+    modalOverlay.className = "modal-overlay";
+    modalOverlay.style.display = "flex";
+    modalOverlay.innerHTML = `
             <div class="modal">
                 <div class="modal-header">
                     <h3>Selesaikan Pemeriksaan - ${queueItem.patientName}</h3>
@@ -408,72 +482,79 @@ export const QueueComponent = {
             </div>
         `;
 
-        document.body.appendChild(modalOverlay);
+    document.body.appendChild(modalOverlay);
 
-        // Event listeners for custom modal
-        const closeModal = () => {
-            document.body.removeChild(modalOverlay);
-        };
+    // Event listeners for custom modal
+    const closeModal = () => {
+      document.body.removeChild(modalOverlay);
+    };
 
-        modalOverlay.querySelector('#customModalClose').addEventListener('click', closeModal);
-        modalOverlay.querySelector('#cancelBtn').addEventListener('click', closeModal);
-        modalOverlay.addEventListener('click', (e) => {
-            if (e.target === modalOverlay) closeModal();
-        });
+    modalOverlay
+      .querySelector("#customModalClose")
+      .addEventListener("click", closeModal);
+    modalOverlay
+      .querySelector("#cancelBtn")
+      .addEventListener("click", closeModal);
+    modalOverlay.addEventListener("click", (e) => {
+      if (e.target === modalOverlay) closeModal();
+    });
 
-        modalOverlay.querySelector('#completeBtn').addEventListener('click', () => {
-            const diagnosis = document.getElementById('diagnosis').value.trim();
-            const prescription = document.getElementById('prescription').value.trim();
-            const notes = document.getElementById('notes').value.trim();
+    modalOverlay.querySelector("#completeBtn").addEventListener("click", () => {
+      const diagnosis = document.getElementById("diagnosis").value.trim();
+      const prescription = document.getElementById("prescription").value.trim();
+      const notes = document.getElementById("notes").value.trim();
 
-            if (!diagnosis) {
-                this.app.showNotification('Diagnosis harus diisi', 'error');
-                return;
-            }
+      if (!diagnosis) {
+        this.app.showNotification("Diagnosis harus diisi", "error");
+        return;
+      }
 
-            this.finalizeExamination(queueItem, { diagnosis, prescription, notes });
-            closeModal();
-        });
-    },
+      this.finalizeExamination(queueItem, { diagnosis, prescription, notes });
+      closeModal();
+    });
+  },
 
-    finalizeExamination(queueItem, completionData) {
-        const queue = Storage.get('queue') || [];
-        
-        // Update queue item
-        queueItem.status = 'completed';
-        queueItem.completionTime = new Date().toISOString();
-        queueItem.diagnosis = completionData.diagnosis;
-        queueItem.prescription = completionData.prescription;
-        queueItem.notes = completionData.notes;
-        
-        // Update doctor status back to available
-        const doctors = Storage.get('doctors') || [];
-        const doctor = doctors.find(d => d.id === queueItem.doctorId);
-        if (doctor) {
-            doctor.status = 'available';
-            Storage.set('doctors', doctors);
-        }
-        
-        Storage.set('queue', queue);
-        this.refreshQueue();
-        
-        this.app.showNotification(`Pemeriksaan untuk ${queueItem.patientName} telah selesai`, 'success');
-    },
+  finalizeExamination(queueItem, completionData) {
+    const queue = Storage.get("queue") || [];
 
-    viewDetails(queueId) {
-        const queue = Storage.get('queue') || [];
-        const queueItem = queue.find(q => q.id === queueId);
-        
-        if (!queueItem) {
-            this.app.showNotification('Detail tidak ditemukan', 'error');
-            return;
-        }
+    // Update queue item
+    queueItem.status = "completed";
+    queueItem.completionTime = new Date().toISOString();
+    queueItem.diagnosis = completionData.diagnosis;
+    queueItem.prescription = completionData.prescription;
+    queueItem.notes = completionData.notes;
 
-        // Create custom modal for detailed HTML content
-        const modalOverlay = document.createElement('div');
-        modalOverlay.className = 'modal-overlay';
-        modalOverlay.style.display = 'flex';
-        modalOverlay.innerHTML = `
+    // Update doctor status back to available
+    const doctors = Storage.get("doctors") || [];
+    const doctor = doctors.find((d) => d.id === queueItem.doctorId);
+    if (doctor) {
+      doctor.status = "available";
+      Storage.set("doctors", doctors);
+    }
+
+    Storage.set("queue", queue);
+    this.refreshQueue();
+
+    this.app.showNotification(
+      `Pemeriksaan untuk ${queueItem.patientName} telah selesai`,
+      "success"
+    );
+  },
+
+  viewDetails(queueId) {
+    const queue = Storage.get("queue") || [];
+    const queueItem = queue.find((q) => q.id === queueId);
+
+    if (!queueItem) {
+      this.app.showNotification("Detail tidak ditemukan", "error");
+      return;
+    }
+
+    // Create custom modal for detailed HTML content
+    const modalOverlay = document.createElement("div");
+    modalOverlay.className = "modal-overlay";
+    modalOverlay.style.display = "flex";
+    modalOverlay.innerHTML = `
             <div class="modal">
                 <div class="modal-header">
                     <h3>Detail Pemeriksaan</h3>
@@ -485,20 +566,28 @@ export const QueueComponent = {
                     <div class="patient-info">
                         <div class="info-item">
                             <div class="info-label">Pasien</div>
-                            <div class="info-value">${queueItem.patientName}</div>
+                            <div class="info-value">${
+                              queueItem.patientName
+                            }</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Dokter</div>
-                            <div class="info-value">Dr. ${queueItem.doctorName} - ${queueItem.doctorSpecialty}</div>
+                            <div class="info-value">Dr. ${
+                              queueItem.doctorName
+                            } - ${queueItem.doctorSpecialty}</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Waktu Antrian</div>
-                            <div class="info-value">${new Date(queueItem.timestamp).toLocaleString('id-ID')}</div>
+                            <div class="info-value">${new Date(
+                              queueItem.timestamp
+                            ).toLocaleString("id-ID")}</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Prioritas</div>
                             <div class="info-value">
-                                <span class="status-badge ${this.getPriorityClass(queueItem.priority)}">
+                                <span class="status-badge ${this.getPriorityClass(
+                                  queueItem.priority
+                                )}">
                                     ${this.getPriorityLabel(queueItem.priority)}
                                 </span>
                             </div>
@@ -506,7 +595,9 @@ export const QueueComponent = {
                         <div class="info-item">
                             <div class="info-label">Status</div>
                             <div class="info-value">
-                                <span class="status-badge status-${queueItem.status}">
+                                <span class="status-badge status-${
+                                  queueItem.status
+                                }">
                                     ${this.getStatusLabel(queueItem.status)}
                                 </span>
                             </div>
@@ -515,36 +606,60 @@ export const QueueComponent = {
                             <div class="info-label">Keluhan</div>
                             <div class="info-value">${queueItem.complaint}</div>
                         </div>
-                        ${queueItem.examinationStartTime ? `
+                        ${
+                          queueItem.examinationStartTime
+                            ? `
                             <div class="info-item">
                                 <div class="info-label">Waktu Mulai Pemeriksaan</div>
-                                <div class="info-value">${new Date(queueItem.examinationStartTime).toLocaleString('id-ID')}</div>
+                                <div class="info-value">${new Date(
+                                  queueItem.examinationStartTime
+                                ).toLocaleString("id-ID")}</div>
                             </div>
-                        ` : ''}
-                        ${queueItem.diagnosis ? `
+                        `
+                            : ""
+                        }
+                        ${
+                          queueItem.diagnosis
+                            ? `
                             <div class="info-item">
                                 <div class="info-label">Diagnosis</div>
                                 <div class="info-value">${queueItem.diagnosis}</div>
                             </div>
-                        ` : ''}
-                        ${queueItem.prescription ? `
+                        `
+                            : ""
+                        }
+                        ${
+                          queueItem.prescription
+                            ? `
                             <div class="info-item">
                                 <div class="info-label">Resep</div>
                                 <div class="info-value">${queueItem.prescription}</div>
                             </div>
-                        ` : ''}
-                        ${queueItem.notes ? `
+                        `
+                            : ""
+                        }
+                        ${
+                          queueItem.notes
+                            ? `
                             <div class="info-item">
                                 <div class="info-label">Catatan</div>
                                 <div class="info-value">${queueItem.notes}</div>
                             </div>
-                        ` : ''}
-                        ${queueItem.completionTime ? `
+                        `
+                            : ""
+                        }
+                        ${
+                          queueItem.completionTime
+                            ? `
                             <div class="info-item">
                                 <div class="info-label">Waktu Selesai</div>
-                                <div class="info-value">${new Date(queueItem.completionTime).toLocaleString('id-ID')}</div>
+                                <div class="info-value">${new Date(
+                                  queueItem.completionTime
+                                ).toLocaleString("id-ID")}</div>
                             </div>
-                        ` : ''}
+                        `
+                            : ""
+                        }
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -552,36 +667,44 @@ export const QueueComponent = {
                         <i class="fas fa-times"></i>
                         Tutup
                     </button>
-                    ${queueItem.status === 'completed' ? '' : `
+                    ${
+                      queueItem.status === "completed"
+                        ? ""
+                        : `
                         <button class="btn btn-primary" onclick="hospitalApp.router.navigate('patient-record', { patientId: ${queueItem.patientId} })">
                             <i class="fas fa-user"></i>
                             Lihat Rekam Medis
                         </button>
-                    `}
+                    `
+                    }
                 </div>
             </div>
         `;
 
-        document.body.appendChild(modalOverlay);
+    document.body.appendChild(modalOverlay);
 
-        // Event listeners for custom modal
-        const closeModal = () => {
-            document.body.removeChild(modalOverlay);
-        };
+    // Event listeners for custom modal
+    const closeModal = () => {
+      document.body.removeChild(modalOverlay);
+    };
 
-        modalOverlay.querySelector('#detailModalClose').addEventListener('click', closeModal);
-        modalOverlay.querySelector('#detailCloseBtn').addEventListener('click', closeModal);
-        modalOverlay.addEventListener('click', (e) => {
-            if (e.target === modalOverlay) closeModal();
-        });
-    },
+    modalOverlay
+      .querySelector("#detailModalClose")
+      .addEventListener("click", closeModal);
+    modalOverlay
+      .querySelector("#detailCloseBtn")
+      .addEventListener("click", closeModal);
+    modalOverlay.addEventListener("click", (e) => {
+      if (e.target === modalOverlay) closeModal();
+    });
+  },
 
-    destroy() {
-        if (this.refreshInterval) {
-            clearInterval(this.refreshInterval);
-        }
-        if (window.queueComponent === this) {
-            delete window.queueComponent;
-        }
+  destroy() {
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
     }
+    if (window.queueComponent === this) {
+      delete window.queueComponent;
+    }
+  },
 };

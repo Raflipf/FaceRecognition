@@ -1,7 +1,11 @@
 // Face Recognition Component
+import * as tf from "@tensorflow/tfjs";
+
 const FaceRecognitionComponent = {
-    render() {
-        return `
+  model: null,
+
+  render() {
+    return `
             <div class="fade-in">
                 <div class="card">
                     <div class="card-header">
@@ -98,137 +102,211 @@ const FaceRecognitionComponent = {
                 </div>
             </div>
         `;
-    },
+  },
 
-    init(app) {
-        this.app = app;
-        this.currentStream = null;
-        this.recognizedPatient = null;
-        
-        this.setupEventListeners();
-    },
+  async init(app) {
+    console.log("init called");
+    this.app = app;
+    this.currentStream = null;
+    this.recognizedPatient = null;
+    this.model = null;
 
-    setupEventListeners() {
-        const startCameraBtn = document.getElementById('startCameraBtn');
-        const stopCameraBtn = document.getElementById('stopCameraBtn');
-        const captureBtn = document.getElementById('captureBtn');
-        const retakeBtn = document.getElementById('retakeBtn');
-        const confirmCorrect = document.getElementById('confirmCorrect');
-        const confirmIncorrect = document.getElementById('confirmIncorrect');
+    await this.loadModel();
+    this.setupEventListeners();
+  },
 
-        startCameraBtn.addEventListener('click', () => this.startCamera());
-        stopCameraBtn.addEventListener('click', () => this.stopCamera());
-        captureBtn.addEventListener('click', () => this.captureImage());
-        retakeBtn.addEventListener('click', () => this.retakePhoto());
-        confirmCorrect.addEventListener('click', () => this.confirmIdentification(true));
-        confirmIncorrect.addEventListener('click', () => this.confirmIdentification(false));
-    },
+  async loadModel() {
+    console.log("loadModel called");
+    try {
+      this.model = await tf.loadGraphModel("model_web/model.json");
+      console.log("Model loaded successfully");
+    } catch (error) {
+      console.error("Failed to load model:", error);
+      this.app.showNotification(
+        "Gagal memuat model pengenalan wajah.",
+        "error"
+      );
+    }
+  },
 
-    async startCamera() {
-        try {
-            this.currentStream = await Camera.start('cameraPreview');
-            
-            document.getElementById('cameraPlaceholder').style.display = 'none';
-            document.getElementById('cameraPreview').style.display = 'block';
-            document.getElementById('captureBtn').style.display = 'block';
-            document.getElementById('startCameraBtn').style.display = 'none';
-            document.getElementById('stopCameraBtn').style.display = 'inline-flex';
-            
-        } catch (error) {
-            this.app.showNotification('Gagal mengakses kamera: ' + error.message, 'error');
-        }
-    },
+  setupEventListeners() {
+    const startCameraBtn = document.getElementById("startCameraBtn");
+    const stopCameraBtn = document.getElementById("stopCameraBtn");
+    const captureBtn = document.getElementById("captureBtn");
+    const retakeBtn = document.getElementById("retakeBtn");
+    const confirmCorrect = document.getElementById("confirmCorrect");
+    const confirmIncorrect = document.getElementById("confirmIncorrect");
 
-    stopCamera() {
-        if (this.currentStream) {
-            Camera.stop(this.currentStream);
-            this.currentStream = null;
-        }
-        
-        document.getElementById('cameraPlaceholder').style.display = 'flex';
-        document.getElementById('cameraPreview').style.display = 'none';
-        document.getElementById('captureBtn').style.display = 'none';
-        document.getElementById('startCameraBtn').style.display = 'inline-flex';
-        document.getElementById('stopCameraBtn').style.display = 'none';
-    },
+    startCameraBtn.addEventListener("click", () => this.startCamera());
+    stopCameraBtn.addEventListener("click", () => this.stopCamera());
+    captureBtn.addEventListener("click", () => this.captureImage());
+    retakeBtn.addEventListener("click", () => this.retakePhoto());
+    confirmCorrect.addEventListener("click", () =>
+      this.confirmIdentification(true)
+    );
+    confirmIncorrect.addEventListener("click", () =>
+      this.confirmIdentification(false)
+    );
+  },
 
-    captureImage() {
-        const video = document.getElementById('cameraPreview');
-        const canvas = document.getElementById('captureCanvas');
-        const capturedImage = document.getElementById('capturedImage');
-        
-        // Set canvas size to match video
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        
-        // Draw video frame to canvas
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        // Convert canvas to image
-        const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-        capturedImage.src = imageDataUrl;
-        
-        // Stop camera and show captured section
-        this.stopCamera();
-        document.getElementById('cameraSection').style.display = 'none';
-        document.getElementById('capturedSection').style.display = 'block';
-        
-        // Start face recognition process
-        this.processFaceRecognition(imageDataUrl);
-    },
+  async startCamera() {
+    try {
+      this.currentStream = await Camera.start("cameraPreview");
 
-    processFaceRecognition(imageDataUrl) {
-        // Simulate face recognition processing
-        setTimeout(() => {
-            const patients = Storage.get('patients') || [];
-            
-            if (patients.length === 0) {
-                this.showNoMatch();
-                return;
-            }
-            
-            // Mock face recognition - randomly select a patient for demo
-            const mockRecognition = Math.random() > 0.3; // 70% success rate
-            
-            if (mockRecognition) {
-                const randomPatient = patients[Math.floor(Math.random() * patients.length)];
-                const confidence = (85 + Math.random() * 10).toFixed(1); // 85-95% confidence
-                
-                this.showRecognitionResult(randomPatient, confidence);
-            } else {
-                this.showNoMatch();
-            }
-        }, 2000);
-    },
+      document.getElementById("cameraPlaceholder").style.display = "none";
+      document.getElementById("cameraPreview").style.display = "block";
+      document.getElementById("captureBtn").style.display = "block";
+      document.getElementById("startCameraBtn").style.display = "none";
+      document.getElementById("stopCameraBtn").style.display = "inline-flex";
+    } catch (error) {
+      this.app.showNotification(
+        "Gagal mengakses kamera: " + error.message,
+        "error"
+      );
+    }
+  },
 
-    showRecognitionResult(patient, confidence) {
-        this.recognizedPatient = patient;
-        
-        document.getElementById('recognizedName').textContent = patient.name;
-        document.getElementById('recognizedNik').textContent = patient.nik;
-        document.getElementById('recognizedBirth').textContent = new Date(patient.birthDate).toLocaleDateString('id-ID');
-        document.getElementById('confidenceScore').textContent = confidence + '%';
-        
-        document.getElementById('capturedSection').style.display = 'none';
-        document.getElementById('verificationSection').style.display = 'block';
-    },
+  stopCamera() {
+    if (this.currentStream) {
+      Camera.stop(this.currentStream);
+      this.currentStream = null;
+    }
 
-    showNoMatch() {
-        const resultEl = document.getElementById('recognitionResult');
-        resultEl.className = 'recognition-result';
-        resultEl.style.background = '#fef2f2';
-        resultEl.style.borderColor = '#f87171';
-        resultEl.style.color = '#dc2626';
-        resultEl.innerHTML = `
+    document.getElementById("cameraPlaceholder").style.display = "flex";
+    document.getElementById("cameraPreview").style.display = "none";
+    document.getElementById("captureBtn").style.display = "none";
+    document.getElementById("startCameraBtn").style.display = "inline-flex";
+    document.getElementById("stopCameraBtn").style.display = "none";
+  },
+
+  async captureImage() {
+    console.log("captureImage called");
+    const video = document.getElementById("cameraPreview");
+    const canvas = document.getElementById("captureCanvas");
+    const capturedImage = document.getElementById("capturedImage");
+
+    // Set canvas size to match video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    // Draw video frame to canvas
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Convert canvas to image
+    const imageDataUrl = canvas.toDataURL("image/jpeg", 0.8);
+    capturedImage.src = imageDataUrl;
+
+    // Stop camera and show captured section
+    this.stopCamera();
+    document.getElementById("cameraSection").style.display = "none";
+    document.getElementById("capturedSection").style.display = "block";
+
+    // Start face recognition process
+    await this.processFaceRecognition(canvas);
+  },
+
+  async processFaceRecognition(canvas) {
+    console.log("processFaceRecognition called");
+    if (!this.model) {
+      this.app.showNotification(
+        "Model belum dimuat, tidak dapat melakukan pengenalan wajah.",
+        "error"
+      );
+      this.showNoMatch();
+      return;
+    }
+
+    try {
+      // Preprocess the image from canvas to tensor
+      let tensor = tf.browser.fromPixels(canvas);
+      // Resize or normalize tensor as needed by the model
+      tensor = tf.image.resizeBilinear(tensor, [160, 160]); // changed to match model input size
+      tensor = tensor.expandDims(0);
+      tensor = tensor.toFloat().div(tf.scalar(255));
+
+      // Run inference
+      const predictions = await this.model.executeAsync(tensor);
+
+      // Log embedding to console for debugging and show alert
+      if (Array.isArray(predictions)) {
+        predictions.forEach(async (t, i) => {
+          const array = await t.array();
+          alert(`Face embedding [${i}]: ${JSON.stringify(array)}`);
+          console.log(`Face embedding [${i}]:`, array);
+        });
+      } else {
+        const array = await predictions.array();
+        alert(`Face embedding: ${JSON.stringify(array)}`);
+        console.log("Face embedding:", array);
+      }
+
+      // Process predictions to get recognized patient and confidence
+      // This depends on the model output format, here we assume a mock processing
+      // TODO: Replace with actual processing logic based on model output
+      const patients = Storage.get("patients") || [];
+      if (patients.length === 0) {
+        this.showNoMatch();
+        return;
+      }
+
+      // For demo, randomly select a patient with confidence
+      const mockRecognition = Math.random() > 0.3;
+      if (mockRecognition) {
+        const randomPatient =
+          patients[Math.floor(Math.random() * patients.length)];
+        const confidence = (85 + Math.random() * 10).toFixed(1);
+        this.showRecognitionResult(randomPatient, confidence);
+      } else {
+        this.showNoMatch();
+      }
+
+      // Dispose tensors
+      tf.dispose(tensor);
+      if (Array.isArray(predictions)) {
+        predictions.forEach((t) => tf.dispose(t));
+      } else {
+        tf.dispose(predictions);
+      }
+    } catch (error) {
+      console.error("Error during model inference:", error);
+      this.app.showNotification(
+        "Terjadi kesalahan saat pengenalan wajah.",
+        "error"
+      );
+      this.showNoMatch();
+    }
+  },
+
+  showRecognitionResult(patient, confidence) {
+    this.recognizedPatient = patient;
+
+    document.getElementById("recognizedName").textContent = patient.name;
+    document.getElementById("recognizedNik").textContent = patient.nik;
+    document.getElementById("recognizedBirth").textContent = new Date(
+      patient.birthDate
+    ).toLocaleDateString("id-ID");
+    document.getElementById("confidenceScore").textContent = confidence + "%";
+
+    document.getElementById("capturedSection").style.display = "none";
+    document.getElementById("verificationSection").style.display = "block";
+  },
+
+  showNoMatch() {
+    const resultEl = document.getElementById("recognitionResult");
+    resultEl.className = "recognition-result";
+    resultEl.style.background = "#fef2f2";
+    resultEl.style.borderColor = "#f87171";
+    resultEl.style.color = "#dc2626";
+    resultEl.innerHTML = `
             <i class="fas fa-exclamation-triangle"></i>
             <p>Wajah tidak dikenali dalam database</p>
             <small>Silakan daftarkan sebagai pasien baru</small>
         `;
-        
-        // Add button to go to add patient page
-        setTimeout(() => {
-            resultEl.innerHTML += `
+
+    // Add button to go to add patient page
+    setTimeout(() => {
+      resultEl.innerHTML += `
                 <div style="margin-top: 1rem;">
                     <button class="btn btn-primary" onclick="hospitalApp.router.navigate('add-patient')">
                         <i class="fas fa-user-plus"></i>
@@ -236,40 +314,45 @@ const FaceRecognitionComponent = {
                     </button>
                 </div>
             `;
-        }, 1000);
-    },
+    }, 1000);
+  },
 
-    confirmIdentification(isCorrect) {
-        if (isCorrect && this.recognizedPatient) {
-            // Store the recognized patient for use in patient record
-            Storage.set('currentRecognizedPatient', this.recognizedPatient);
-            
-            // Navigate to patient record
-            this.app.router.navigate('patient-record', { patientId: this.recognizedPatient.id });
-        } else {
-            // If incorrect, restart the process
-            this.app.showNotification('Identifikasi dibatalkan. Silakan coba lagi.', 'info');
-            this.retakePhoto();
-        }
-    },
+  confirmIdentification(isCorrect) {
+    if (isCorrect && this.recognizedPatient) {
+      // Store the recognized patient for use in patient record
+      Storage.set("currentRecognizedPatient", this.recognizedPatient);
 
-    retakePhoto() {
-        document.getElementById('capturedSection').style.display = 'none';
-        document.getElementById('verificationSection').style.display = 'none';
-        document.getElementById('cameraSection').style.display = 'block';
-        
-        // Reset recognition result
-        const resultEl = document.getElementById('recognitionResult');
-        resultEl.className = 'recognition-result pending';
-        resultEl.innerHTML = `
+      // Navigate to patient record
+      this.app.router.navigate("patient-record", {
+        patientId: this.recognizedPatient.id,
+      });
+    } else {
+      // If incorrect, restart the process
+      this.app.showNotification(
+        "Identifikasi dibatalkan. Silakan coba lagi.",
+        "info"
+      );
+      this.retakePhoto();
+    }
+  },
+
+  retakePhoto() {
+    document.getElementById("capturedSection").style.display = "none";
+    document.getElementById("verificationSection").style.display = "none";
+    document.getElementById("cameraSection").style.display = "block";
+
+    // Reset recognition result
+    const resultEl = document.getElementById("recognitionResult");
+    resultEl.className = "recognition-result pending";
+    resultEl.innerHTML = `
             <i class="fas fa-spinner fa-spin"></i>
             <p>Memproses pengenalan wajah...</p>
         `;
-    },
+  },
 
-    destroy() {
-        if (this.currentStream) {
-            Camera.stop(this.currentStream);
-        }
+  destroy() {
+    if (this.currentStream) {
+      Camera.stop(this.currentStream);
     }
+  },
 };

@@ -1,3 +1,5 @@
+import { loginUser } from './utils/api.js';
+
 // Main Application Class
 class HospitalApp {
     constructor() {
@@ -27,10 +29,14 @@ class HospitalApp {
     }
 
     checkAuthState() {
-        const savedAuth = Storage.get('currentUser');
-        if (savedAuth) {
-            this.currentUser = savedAuth;
-            this.isAuthenticated = true;
+        const token = localStorage.getItem('authToken');
+        if (token) {
+            // For simplicity, assume token is valid
+            const savedUser = Storage.get('currentUser');
+            if (savedUser) {
+                this.currentUser = savedUser;
+                this.isAuthenticated = true;
+            }
         }
     }
 
@@ -128,34 +134,26 @@ class HospitalApp {
     }
 
     // Authentication methods
-    login(credentials) {
-        return new Promise((resolve, reject) => {
-            this.showLoading();
-            
-            // Simulate API call delay
-            setTimeout(() => {
-                const { username, password } = credentials;
-                
-                // Simple authentication (in real app, this would be server-side)
-                if (username === 'receptionist' && password === 'hospital123') {
-                    this.currentUser = {
-                        id: 1,
-                        username: username,
-                        name: 'Receptionist',
-                        role: 'receptionist'
-                    };
-                    this.isAuthenticated = true;
-                    Storage.set('currentUser', this.currentUser);
-                    
-                    this.hideLoading();
-                    this.showHeader();
-                    resolve(this.currentUser);
-                } else {
-                    this.hideLoading();
-                    reject(new Error('Username atau password salah'));
-                }
-            }, 1000);
-        });
+    async login(credentials) {
+        this.showLoading();
+        try {
+            const token = await loginUser(credentials);
+            // Save token to localStorage
+            localStorage.setItem('authToken', token);
+            // Save user info (for now, just username)
+            this.currentUser = {
+                username: credentials.username,
+                token: token
+            };
+            this.isAuthenticated = true;
+            Storage.set('currentUser', this.currentUser);
+            this.hideLoading();
+            this.showHeader();
+            return this.currentUser;
+        } catch (error) {
+            this.hideLoading();
+            throw error;
+        }
     }
 
     logout() {
@@ -166,6 +164,7 @@ class HospitalApp {
                 this.currentUser = null;
                 this.isAuthenticated = false;
                 Storage.remove('currentUser');
+                localStorage.removeItem('authToken');
                 this.hideHeader();
                 this.router.navigate('login');
             },

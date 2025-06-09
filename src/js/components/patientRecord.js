@@ -1,12 +1,12 @@
 // Patient Record Component
-import { Storage } from '../utils/storage.js';
+import { Storage } from "../utils/storage.js";
 
 export const PatientRecordComponent = {
-    render(patientId) {
-        const patient = this.getPatient(patientId);
-        
-        if (!patient) {
-            return `
+  async render(patientId) {
+    const patient = this.patient || (await this.getPatient(patientId));
+
+    if (!patient) {
+      return `
                 <div class="fade-in">
                     <div class="card">
                         <div class="card-header">
@@ -27,11 +27,11 @@ export const PatientRecordComponent = {
                     </div>
                 </div>
             `;
-        }
+    }
 
-        const medicalHistory = this.getMedicalHistory(patient.id);
+    const medicalHistory = this.getMedicalHistory(patient.id);
 
-        return `
+    return `
             <div class="fade-in">
                 <div class="card">
                     <div class="card-header">
@@ -56,15 +56,21 @@ export const PatientRecordComponent = {
                         </div>
                         <div class="info-item">
                             <div class="info-label">Tanggal Lahir</div>
-                            <div class="info-value">${new Date(patient.birthDate).toLocaleDateString('id-ID')}</div>
+                            <div class="info-value">${new Date(
+                              patient.birthDate
+                            ).toLocaleDateString("id-ID")}</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Umur</div>
-                            <div class="info-value">${this.calculateAge(patient.birthDate)} tahun</div>
+                            <div class="info-value">${this.calculateAge(
+                              patient.birthDate
+                            )} tahun</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Jenis Kelamin</div>
-                            <div class="info-value">${patient.gender === 'M' ? 'Laki-laki' : 'Perempuan'}</div>
+                            <div class="info-value">${
+                              patient.gender === "M" ? "Laki-laki" : "Perempuan"
+                            }</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Alamat</div>
@@ -76,7 +82,9 @@ export const PatientRecordComponent = {
                         </div>
                         <div class="info-item">
                             <div class="info-label">Golongan Darah</div>
-                            <div class="info-value">${patient.bloodType || '-'}</div>
+                            <div class="info-value">${
+                              patient.bloodType || "-"
+                            }</div>
                         </div>
                     </div>
 
@@ -141,50 +149,70 @@ export const PatientRecordComponent = {
                 </div>
             </div>
         `;
-    },
+  },
 
-    getPatient(patientId) {
-        // First check if there's a currently recognized patient
-        const recognizedPatient = Storage.get('currentRecognizedPatient');
-        if (recognizedPatient) {
-            Storage.remove('currentRecognizedPatient');
-            return recognizedPatient;
+  async getPatient(patientId) {
+    // First check if there's a currently recognized patient
+    const recognizedPatient = Storage.get("currentRecognizedPatient");
+    if (recognizedPatient) {
+      Storage.remove("currentRecognizedPatient");
+      return recognizedPatient;
+    }
+
+    // Otherwise, find by ID with type-coerced comparison as string
+    if (!patientId) return null;
+
+    const patients = Storage.get("patients") || [];
+    let patient = patients.find((p) => String(p.id) === String(patientId)); // compare as strings
+
+    if (!patient) {
+      // Fallback: fetch patient from API
+      try {
+        const token = this.app.currentUser.token;
+        const api = await import("../../../js/utils/api.js");
+        patient = await api.getPatientById(patientId, token);
+        if (patient) {
+          // Update Storage with fetched patient
+          patients.push(patient);
+          Storage.set("patients", patients);
         }
+      } catch (error) {
+        console.error("Failed to fetch patient from API:", error);
+      }
+    }
 
-        // Otherwise, find by ID
-        if (!patientId) return null;
-        
-        const patients = Storage.get('patients') || [];
-        return patients.find(p => p.id === parseInt(patientId));
-    },
+    return patient;
+  },
 
-    getMedicalHistory(patientId) {
-        const queue = Storage.get('queue') || [];
-        return queue
-            .filter(q => q.patientId === patientId && q.status === 'completed')
-            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    },
+  getMedicalHistory(patientId) {
+    const queue = Storage.get("queue") || [];
+    return queue
+      .filter((q) => q.patientId === patientId && q.status === "completed")
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  },
 
-    renderMedicalHistory(history) {
-        if (history.length === 0) {
-            return `
+  renderMedicalHistory(history) {
+    if (history.length === 0) {
+      return `
                 <div style="text-align: center; padding: 2rem; color: #64748b;">
                     <i class="fas fa-clipboard" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
                     <p>Belum ada riwayat kunjungan</p>
                 </div>
             `;
-        }
+    }
 
-        return history.map(visit => `
+    return history
+      .map(
+        (visit) => `
             <div class="history-item">
                 <div class="history-date">
-                    ${new Date(visit.timestamp).toLocaleDateString('id-ID', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
+                    ${new Date(visit.timestamp).toLocaleDateString("id-ID", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
                     })}
                 </div>
                 <div class="history-doctor">
@@ -193,125 +221,197 @@ export const PatientRecordComponent = {
                 </div>
                 <div class="history-complaint">
                     <strong>Keluhan:</strong> ${visit.complaint}
-                    ${visit.diagnosis ? `<br><strong>Diagnosis:</strong> ${visit.diagnosis}` : ''}
-                    ${visit.prescription ? `<br><strong>Resep:</strong> ${visit.prescription}` : ''}
+                    ${
+                      visit.diagnosis
+                        ? `<br><strong>Diagnosis:</strong> ${visit.diagnosis}`
+                        : ""
+                    }
+                    ${
+                      visit.prescription
+                        ? `<br><strong>Resep:</strong> ${visit.prescription}`
+                        : ""
+                    }
                 </div>
-                ${visit.notes ? `
+                ${
+                  visit.notes
+                    ? `
                     <div style="margin-top: 0.5rem; font-size: 0.875rem; color: #64748b;">
                         <strong>Catatan:</strong> ${visit.notes}
                     </div>
-                ` : ''}
+                `
+                    : ""
+                }
             </div>
-        `).join('');
-    },
+        `
+      )
+      .join("");
+  },
 
-    renderDoctorOptions() {
-        const doctors = Storage.get('doctors') || [];
-        return doctors
-            .filter(doctor => doctor.status === 'available')
-            .map(doctor => `
-                <option value="${doctor.id}" data-name="${doctor.name}" data-specialty="${doctor.specialty}">
+  renderDoctorOptions() {
+    if (!this.app || !this.app.doctors) {
+      return "";
+    }
+    const doctors = this.app.doctors;
+    return doctors
+      .filter((doctor) => doctor.status === "available")
+      .map(
+        (doctor) => `
+                <option value="${doctor._id}" data-name="${doctor.name}" data-specialty="${doctor.specialty}">
                     Dr. ${doctor.name} - ${doctor.specialty}
                 </option>
-            `).join('');
-    },
+            `
+      )
+      .join("");
+  },
 
-    calculateAge(birthDate) {
-        const today = new Date();
-        const birth = new Date(birthDate);
-        let age = today.getFullYear() - birth.getFullYear();
-        const monthDiff = today.getMonth() - birth.getMonth();
-        
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-            age--;
-        }
-        
-        return age;
-    },
+  calculateAge(birthDate) {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
 
-    init(app, patientId) {
-        this.app = app;
-        this.patientId = patientId;
-        this.patient = this.getPatient(patientId);
-        
-        if (!this.patient) return;
-        
-        this.setupEventListeners();
-    },
-
-    setupEventListeners() {
-        const form = document.getElementById('newVisitForm');
-        if (!form) return;
-
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleNewVisit();
-        });
-    },
-
-    handleNewVisit() {
-        const doctorSelect = document.getElementById('doctorSelect');
-        const complaintInput = document.getElementById('complaint');
-        const prioritySelect = document.getElementById('priority');
-
-        const doctorId = parseInt(doctorSelect.value);
-        const selectedOption = doctorSelect.options[doctorSelect.selectedIndex];
-        const doctorName = selectedOption.dataset.name;
-        const doctorSpecialty = selectedOption.dataset.specialty;
-        const complaint = complaintInput.value.trim();
-        const priority = prioritySelect.value;
-
-        if (!doctorId || !complaint) {
-            this.app.showNotification('Harap isi semua field yang diperlukan', 'error');
-            return;
-        }
-
-        // Create new queue entry
-        const newQueueEntry = {
-            id: Date.now(),
-            patientId: this.patient.id,
-            patientName: this.patient.name,
-            doctorId: doctorId,
-            doctorName: doctorName,
-            doctorSpecialty: doctorSpecialty,
-            complaint: complaint,
-            priority: priority,
-            status: 'waiting',
-            timestamp: new Date().toISOString(),
-            queueNumber: this.getNextQueueNumber(doctorId)
-        };
-
-        // Save to queue
-        const queue = Storage.get('queue') || [];
-        queue.push(newQueueEntry);
-        Storage.set('queue', queue);
-
-        // Show success message and redirect
-        this.app.showModal(
-            'Berhasil Ditambahkan',
-            `Pasien ${this.patient.name} telah ditambahkan ke antrian Dr. ${doctorName}.\n\nNomor Antrian: ${newQueueEntry.queueNumber}`,
-            () => {
-                this.app.router.navigate('queue');
-            }
-        );
-
-        // Reset form
-        const form = document.getElementById('newVisitForm');
-        if (form) {
-            form.reset();
-        }
-    },
-
-    getNextQueueNumber(doctorId) {
-        const queue = Storage.get('queue') || [];
-        const today = new Date().toDateString();
-        
-        const todayQueue = queue.filter(q => 
-            q.doctorId === doctorId && 
-            new Date(q.timestamp).toDateString() === today &&
-            q.status !== 'completed'
-        );
-        
-        return todayQueue.length + 1;
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birth.getDate())
+    ) {
+      age--;
     }
+
+    return age;
+  },
+
+  async init(app, patientId) {
+    this.app = app;
+    this.patientId = patientId;
+    this.patient = await this.getPatient(patientId);
+
+    if (!this.patient) return;
+
+    await this.loadDoctors();
+
+    this.setupEventListeners();
+  },
+
+  async loadDoctors() {
+    try {
+      const token = this.app.currentUser.token;
+      const api = await import("../../../js/utils/api.js");
+      this.app.doctors = await api.getDoctors(token);
+    } catch (error) {
+      this.app.showNotification(
+        "Gagal mengambil data dokter: " + error.message,
+        "error"
+      );
+      this.app.doctors = [];
+    }
+  },
+
+  setupEventListeners() {
+    const form = document.getElementById("newVisitForm");
+    if (!form) return;
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      this.handleNewVisit();
+    });
+  },
+
+  async handleNewVisit() {
+    const doctorSelect = document.getElementById("doctorSelect");
+    const complaintInput = document.getElementById("complaint");
+    const prioritySelect = document.getElementById("priority");
+
+    const complaint = complaintInput.value.trim();
+    const priorityStr = prioritySelect.value;
+
+    if (!complaint) {
+      this.app.showNotification(
+        "Harap isi semua field yang diperlukan",
+        "error"
+      );
+      return;
+    }
+
+    // Map priority string to integer as per API example
+    const priorityMap = {
+      normal: 1,
+      urgent: 2,
+      emergency: 3,
+    };
+    const priority = priorityMap[priorityStr] || 1;
+
+    // Find doctor object by selected doctor id string
+    const doctorIdStr = doctorSelect.value;
+    const doctor = this.app.doctors.find((d) => d._id === doctorIdStr);
+    if (!doctor) {
+      this.app.showNotification("Dokter tidak ditemukan", "error");
+      return;
+    }
+
+    // Create new queue entry with valid _id fields
+    const newQueueEntry = {
+      patient_id: this.patient._id || this.patient.id, // use _id if available
+      doctor_id: doctor._id,
+      complaint: complaint,
+      priority: priority,
+      status: "waiting",
+      queueNumber: this.getNextQueueNumber(doctor._id), // keep capitalization as in example
+      examinationStartTime: null,
+      completionTime: null,
+      diagnosis: "",
+      prescription: "",
+      notes: "",
+    };
+
+    console.log("Queue data to send:", newQueueEntry);
+
+    try {
+      const token = this.app.currentUser.token;
+      const api = await import("../../../js/utils/api.js");
+      const addedQueue = await api.addQueue(newQueueEntry, token);
+
+      this.app.showModal(
+        "Berhasil Ditambahkan",
+        `Pasien ${this.patient.name} telah ditambahkan ke antrian Dr. ${doctor.name}.\n\nNomor Antrian: ${addedQueue.queueNumber}`,
+        () => {
+          this.app.router.navigate("queue");
+        }
+      );
+
+      // Reset form
+      const form = document.getElementById("newVisitForm");
+      if (form) {
+        form.reset();
+      }
+    } catch (error) {
+      console.error("Error adding queue:", error);
+      if (error.response) {
+        error.response.json().then((data) => {
+          this.app.showNotification(
+            "Gagal menambahkan antrian: " + (data.message || error.message),
+            "error"
+          );
+        });
+      } else {
+        this.app.showNotification(
+          "Gagal menambahkan antrian: " + error.message,
+          "error"
+        );
+      }
+    }
+  },
+
+  getNextQueueNumber(doctorId) {
+    const queue = Storage.get("queue") || [];
+    const today = new Date().toDateString();
+
+    const todayQueue = queue.filter(
+      (q) =>
+        q.doctorId === doctorId &&
+        new Date(q.timestamp).toDateString() === today &&
+        q.status !== "completed"
+    );
+
+    return todayQueue.length + 1;
+  },
 };

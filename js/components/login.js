@@ -37,11 +37,6 @@ const LoginComponent = {
                             Login
                         </button>
                     </form>
-                    <div class="mt-3 text-center">
-                        <small style="color: #64748b;">
-                            Demo: username: <strong>receptionist</strong>, password: <strong>hospital123</strong>
-                        </small>
-                    </div>
                 </div>
             </div>
         `;

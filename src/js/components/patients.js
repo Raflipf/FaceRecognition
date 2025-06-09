@@ -1,7 +1,7 @@
 // Patients List Component
 export const PatientsComponent = {
-    render() {
-        return `
+  render() {
+    return `
             <div class="fade-in">
                 <div class="card">
                     <div class="card-header">
@@ -130,93 +130,119 @@ export const PatientsComponent = {
                 </div>
             </div>
         `;
-    },
+  },
 
-    init(app) {
-        this.app = app;
-        this.currentView = 'table';
-        this.filteredPatients = [];
-        
-        this.setupEventListeners();
-        this.loadPatients();
-        this.updateStatistics();
-    },
+  init(app) {
+    this.app = app;
+    this.currentView = "table";
+    this.filteredPatients = [];
 
-    setupEventListeners() {
-        const searchInput = document.getElementById('searchPatients');
-        const genderFilter = document.getElementById('genderFilter');
-        const bloodTypeFilter = document.getElementById('bloodTypeFilter');
-        const statusFilter = document.getElementById('statusFilter');
-        const refreshBtn = document.getElementById('refreshPatients');
-        const cardViewBtn = document.getElementById('cardViewBtn');
-        const tableViewBtn = document.getElementById('tableViewBtn');
+    this.setupEventListeners();
+    this.loadPatients();
+    this.updateStatistics();
+  },
 
-        // Search and filter events
-        [searchInput, genderFilter, bloodTypeFilter, statusFilter].forEach(element => {
-            if (element) {
-                element.addEventListener('input', () => this.filterPatients());
-                element.addEventListener('change', () => this.filterPatients());
-            }
-        });
+  setupEventListeners() {
+    const searchInput = document.getElementById("searchPatients");
+    const genderFilter = document.getElementById("genderFilter");
+    const bloodTypeFilter = document.getElementById("bloodTypeFilter");
+    const statusFilter = document.getElementById("statusFilter");
+    const refreshBtn = document.getElementById("refreshPatients");
+    const cardViewBtn = document.getElementById("cardViewBtn");
+    const tableViewBtn = document.getElementById("tableViewBtn");
 
-        // Refresh button
-        if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => this.refreshData());
+    // Search and filter events
+    [searchInput, genderFilter, bloodTypeFilter, statusFilter].forEach(
+      (element) => {
+        if (element) {
+          element.addEventListener("input", () => this.filterPatients());
+          element.addEventListener("change", () => this.filterPatients());
         }
+      }
+    );
 
-        // View toggle buttons
-        if (cardViewBtn) {
-            cardViewBtn.addEventListener('click', () => this.switchView('card'));
-        }
-        if (tableViewBtn) {
-            tableViewBtn.addEventListener('click', () => this.switchView('table'));
-        }
-    },
+    // Refresh button
+    if (refreshBtn) {
+      refreshBtn.addEventListener("click", () => this.refreshData());
+    }
 
-    loadPatients() {
-        const patients = this.app.storage.get('patients') || [];
-        this.allPatients = patients;
-        this.filteredPatients = [...patients];
-        this.renderPatients();
-    },
+    // View toggle buttons
+    if (cardViewBtn) {
+      cardViewBtn.addEventListener("click", () => this.switchView("card"));
+    }
+    if (tableViewBtn) {
+      tableViewBtn.addEventListener("click", () => this.switchView("table"));
+    }
+  },
 
-    filterPatients() {
-        const searchTerm = document.getElementById('searchPatients')?.value.toLowerCase() || '';
-        const genderFilter = document.getElementById('genderFilter')?.value || '';
-        const bloodTypeFilter = document.getElementById('bloodTypeFilter')?.value || '';
-        const statusFilter = document.getElementById('statusFilter')?.value || '';
+  async loadPatients() {
+    this.app.showLoading();
+    try {
+      const token = this.app.currentUser.token;
+      const patients = await import("../../../js/utils/api.js").then((api) =>
+        api.getPatients(token)
+      );
+      this.allPatients = patients;
+      this.filteredPatients = [...patients];
+      this.app.storage.set('patients', patients); // Save patients to Storage
+      this.renderPatients();
+      this.updateStatistics();
+    } catch (error) {
+      this.app.showNotification(
+        "Gagal mengambil data pasien: " + error.message,
+        "error"
+      );
+    } finally {
+      this.app.hideLoading();
+    }
+  },
 
-        this.filteredPatients = this.allPatients.filter(patient => {
-            const matchesSearch = !searchTerm || 
-                patient.name.toLowerCase().includes(searchTerm) ||
-                patient.nik.includes(searchTerm) ||
-                patient.phone.includes(searchTerm);
-            
-            const matchesGender = !genderFilter || patient.gender === genderFilter;
-            const matchesBloodType = !bloodTypeFilter || patient.bloodType === bloodTypeFilter;
-            const matchesStatus = !statusFilter || patient.status === statusFilter;
+  filterPatients() {
+    const searchTerm =
+      document.getElementById("searchPatients")?.value.toLowerCase() || "";
+    const genderFilter = document.getElementById("genderFilter")?.value || "";
+    const bloodTypeFilter =
+      document.getElementById("bloodTypeFilter")?.value || "";
+    const statusFilter = document.getElementById("statusFilter")?.value || "";
 
-            return matchesSearch && matchesGender && matchesBloodType && matchesStatus;
-        });
+    this.filteredPatients = this.allPatients.filter((patient) => {
+      const matchesSearch =
+        !searchTerm ||
+        (patient.name && patient.name.toLowerCase().includes(searchTerm)) ||
+        (patient.nik && patient.nik.includes(searchTerm)) ||
+        (patient.phone && patient.phone.includes(searchTerm));
 
-        this.renderPatients();
-        this.updateFilteredCount();
-    },
+      const matchesGender =
+        !genderFilter ||
+        (patient.gender &&
+          patient.gender.toUpperCase() === genderFilter.toUpperCase());
+      const matchesBloodType =
+        !bloodTypeFilter || patient.bloodType === bloodTypeFilter;
+      const matchesStatus = !statusFilter || patient.status === statusFilter;
 
-    renderPatients() {
-        if (this.currentView === 'table') {
-            this.renderTableView();
-        } else {
-            this.renderCardView();
-        }
-    },
+      return (
+        matchesSearch && matchesGender && matchesBloodType && matchesStatus
+      );
+    });
 
-    renderTableView() {
-        const tbody = document.getElementById('patientsTableBody');
-        if (!tbody) return;
+    this.renderPatients();
+    this.updateFilteredCount();
+  },
 
-        if (this.filteredPatients.length === 0) {
-            tbody.innerHTML = `
+  renderPatients() {
+    if (this.currentView === "table") {
+      this.renderTableView();
+    } else {
+      this.renderCardView();
+    }
+  },
+
+  renderTableView() {
+    const tbody = document.getElementById("patientsTableBody");
+    if (!tbody) return;
+
+    if (this.filteredPatients.length === 0) {
+      tbody.innerHTML = `
                 <tr>
                     <td colspan="9" style="text-align: center; padding: 2rem; color: #64748b;">
                         <i class="fas fa-users" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5; display: block;"></i>
@@ -224,14 +250,20 @@ export const PatientsComponent = {
                     </td>
                 </tr>
             `;
-            return;
-        }
+      return;
+    }
 
-        tbody.innerHTML = this.filteredPatients.map(patient => `
+    tbody.innerHTML = this.filteredPatients
+      .map(
+        (patient) => `
             <tr>
                 <td>
                     <div class="patient-avatar" style="width: 40px; height: 40px; font-size: 1rem;">
-                        ${patient.photo ? `<img src="${patient.photo}" class="patient-photo" alt="${patient.name}">` : patient.name.charAt(0).toUpperCase()}
+                        ${
+                          patient.photo
+                            ? `<img src="${patient.photo}" class="patient-photo" alt="${patient.name}">`
+                            : patient.name.charAt(0).toUpperCase()
+                        }
                     </div>
                 </td>
                 <td>
@@ -239,68 +271,100 @@ export const PatientsComponent = {
                 </td>
                 <td>${patient.nik}</td>
                 <td>${this.calculateAge(patient.birthDate)} tahun</td>
-                <td>${patient.gender === 'M' ? 'Laki-laki' : 'Perempuan'}</td>
-                <td>${patient.bloodType || '-'}</td>
+                <td>${patient.gender === "M" ? "Laki-laki" : "Perempuan"}</td>
+                <td>${patient.bloodType || "-"}</td>
                 <td>${patient.phone}</td>
                 <td>
-                    <span class="status-badge status-${patient.status || 'active'}">
-                        ${patient.status === 'inactive' ? 'Tidak Aktif' : 'Aktif'}
+                    <span class="status-badge status-${
+                      patient.status || "active"
+                    }">
+                        ${
+                          patient.status === "inactive"
+                            ? "Tidak Aktif"
+                            : "Aktif"
+                        }
                     </span>
                 </td>
                 <td>
                     <div style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
                         <button class="btn btn-primary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" 
-                                onclick="patientsComponent.viewPatientDetail(${patient.id})">
+                                onclick="patientsComponent.viewPatientDetail(${
+                                  patient.id
+                                })">
                             <i class="fas fa-eye"></i>
                             Detail
                         </button>
                         <button class="btn btn-success" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" 
-                                onclick="patientsComponent.addToQueue(${patient.id})">
+                                onclick="patientsComponent.addToQueue(${
+                                  patient.id
+                                })">
                             <i class="fas fa-plus"></i>
                             Antri
                         </button>
                     </div>
                 </td>
             </tr>
-        `).join('');
-    },
+        `
+      )
+      .join("");
+  },
 
-    renderCardView() {
-        const container = document.getElementById('patientsCardContainer');
-        if (!container) return;
+  renderCardView() {
+    const container = document.getElementById("patientsCardContainer");
+    if (!container) return;
 
-        if (this.filteredPatients.length === 0) {
-            container.innerHTML = `
+    if (this.filteredPatients.length === 0) {
+      container.innerHTML = `
                 <div style="text-align: center; padding: 3rem; color: #64748b;">
                     <i class="fas fa-users" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
                     <h3>Tidak ada pasien ditemukan</h3>
                     <p>Coba ubah filter pencarian atau tambah pasien baru</p>
                 </div>
             `;
-            return;
-        }
+      return;
+    }
 
-        container.innerHTML = this.filteredPatients.map(patient => `
+    container.innerHTML = this.filteredPatients
+      .map(
+        (patient) => `
             <div class="patient-card">
                 <div class="patient-header">
                     <div class="patient-avatar">
-                        ${patient.photo ? `<img src="${patient.photo}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" alt="${patient.name}">` : patient.name.charAt(0).toUpperCase()}
+                        ${
+                          patient.photo
+                            ? `<img src="${patient.photo}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" alt="${patient.name}">`
+                            : patient.name.charAt(0).toUpperCase()
+                        }
                     </div>
                     <div style="flex: 1;">
-                        <h3 style="margin: 0; color: #1e293b;">${patient.name}</h3>
-                        <p style="margin: 0; color: #64748b;">NIK: ${patient.nik}</p>
-                        <span class="status-badge status-${patient.status || 'active'}" style="margin-top: 0.5rem; display: inline-block;">
-                            ${patient.status === 'inactive' ? 'Tidak Aktif' : 'Aktif'}
+                        <h3 style="margin: 0; color: #1e293b;">${
+                          patient.name
+                        }</h3>
+                        <p style="margin: 0; color: #64748b;">NIK: ${
+                          patient.nik
+                        }</p>
+                        <span class="status-badge status-${
+                          patient.status || "active"
+                        }" style="margin-top: 0.5rem; display: inline-block;">
+                            ${
+                              patient.status === "inactive"
+                                ? "Tidak Aktif"
+                                : "Aktif"
+                            }
                         </span>
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                         <button class="btn btn-primary" style="font-size: 0.875rem; padding: 0.5rem 1rem;" 
-                                onclick="patientsComponent.viewPatientDetail(${patient.id})">
+                                onclick="patientsComponent.viewPatientDetail(${
+                                  patient.id
+                                })">
                             <i class="fas fa-eye"></i>
                             Detail
                         </button>
                         <button class="btn btn-success" style="font-size: 0.875rem; padding: 0.5rem 1rem;" 
-                                onclick="patientsComponent.addToQueue(${patient.id})">
+                                onclick="patientsComponent.addToQueue(${
+                                  patient.id
+                                })">
                             <i class="fas fa-plus"></i>
                             Tambah Antrian
                         </button>
@@ -310,15 +374,21 @@ export const PatientsComponent = {
                 <div class="patient-info">
                     <div class="info-item">
                         <div class="info-label">Umur</div>
-                        <div class="info-value">${this.calculateAge(patient.birthDate)} tahun</div>
+                        <div class="info-value">${this.calculateAge(
+                          patient.birthDate
+                        )} tahun</div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">Jenis Kelamin</div>
-                        <div class="info-value">${patient.gender === 'M' ? 'Laki-laki' : 'Perempuan'}</div>
+                        <div class="info-value">${
+                          patient.gender === "M" ? "Laki-laki" : "Perempuan"
+                        }</div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">Golongan Darah</div>
-                        <div class="info-value">${patient.bloodType || '-'}</div>
+                        <div class="info-value">${
+                          patient.bloodType || "-"
+                        }</div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">No. Telepon</div>
@@ -330,92 +400,101 @@ export const PatientsComponent = {
                     </div>
                     <div class="info-item">
                         <div class="info-label">Terdaftar</div>
-                        <div class="info-value">${new Date(patient.registrationDate).toLocaleDateString('id-ID')}</div>
+                        <div class="info-value">${new Date(
+                          patient.registrationDate
+                        ).toLocaleDateString("id-ID")}</div>
                     </div>
                 </div>
             </div>
-        `).join('');
-    },
+        `
+      )
+      .join("");
+  },
 
-    switchView(viewType) {
-        this.currentView = viewType;
-        const tableView = document.getElementById('tableView');
-        const cardView = document.getElementById('cardView');
-        const tableBtn = document.getElementById('tableViewBtn');
-        const cardBtn = document.getElementById('cardViewBtn');
+  switchView(viewType) {
+    this.currentView = viewType;
+    const tableView = document.getElementById("tableView");
+    const cardView = document.getElementById("cardView");
+    const tableBtn = document.getElementById("tableViewBtn");
+    const cardBtn = document.getElementById("cardViewBtn");
 
-        if (viewType === 'table') {
-            tableView.style.display = 'block';
-            cardView.style.display = 'none';
-            tableBtn.classList.add('btn-primary');
-            tableBtn.classList.remove('btn-secondary');
-            cardBtn.classList.add('btn-secondary');
-            cardBtn.classList.remove('btn-primary');
-        } else {
-            tableView.style.display = 'none';
-            cardView.style.display = 'block';
-            cardBtn.classList.add('btn-primary');
-            cardBtn.classList.remove('btn-secondary');
-            tableBtn.classList.add('btn-secondary');
-            tableBtn.classList.remove('btn-primary');
-        }
-
-        this.renderPatients();
-    },
-
-    updateStatistics() {
-        const patients = this.allPatients || [];
-        const totalPatients = patients.length;
-        const activePatients = patients.filter(p => p.status !== 'inactive').length;
-        const malePatients = patients.filter(p => p.gender === 'M').length;
-        const femalePatients = patients.filter(p => p.gender === 'F').length;
-
-        document.getElementById('totalPatients').textContent = totalPatients;
-        document.getElementById('activePatients').textContent = activePatients;
-        document.getElementById('malePatients').textContent = malePatients;
-        document.getElementById('femalePatients').textContent = femalePatients;
-    },
-
-    updateFilteredCount() {
-        const countElement = document.getElementById('filteredCount');
-        if (countElement) {
-            countElement.textContent = this.filteredPatients.length;
-        }
-    },
-
-    calculateAge(birthDate) {
-        const today = new Date();
-        const birth = new Date(birthDate);
-        let age = today.getFullYear() - birth.getFullYear();
-        const monthDiff = today.getMonth() - birth.getMonth();
-        
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-            age--;
-        }
-        
-        return age;
-    },
-
-    viewPatientDetail(patientId) {
-        this.app.router.navigate('patient-record', { patientId });
-    },
-
-    addToQueue(patientId) {
-        // Store selected patient for queue
-        const patient = this.allPatients.find(p => p.id === patientId);
-        if (patient) {
-            this.app.storage.set('selectedPatientForQueue', patient);
-            this.app.router.navigate('patient-record', { patientId });
-        }
-    },
-
-    refreshData() {
-        this.loadPatients();
-        this.updateStatistics();
-        this.app.showNotification('Data pasien berhasil diperbarui', 'success');
-    },
-
-    destroy() {
-        // Cleanup if needed
+    if (viewType === "table") {
+      tableView.style.display = "block";
+      cardView.style.display = "none";
+      tableBtn.classList.add("btn-primary");
+      tableBtn.classList.remove("btn-secondary");
+      cardBtn.classList.add("btn-secondary");
+      cardBtn.classList.remove("btn-primary");
+    } else {
+      tableView.style.display = "none";
+      cardView.style.display = "block";
+      cardBtn.classList.add("btn-primary");
+      cardBtn.classList.remove("btn-secondary");
+      tableBtn.classList.add("btn-secondary");
+      tableBtn.classList.remove("btn-primary");
     }
+
+    this.renderPatients();
+  },
+
+  updateStatistics() {
+    const patients = this.allPatients || [];
+    const totalPatients = patients.length;
+    const activePatients = patients.filter(
+      (p) => p.status !== "inactive"
+    ).length;
+    const malePatients = patients.filter((p) => p.gender === "M").length;
+    const femalePatients = patients.filter((p) => p.gender === "F").length;
+
+    document.getElementById("totalPatients").textContent = totalPatients;
+    document.getElementById("activePatients").textContent = activePatients;
+    document.getElementById("malePatients").textContent = malePatients;
+    document.getElementById("femalePatients").textContent = femalePatients;
+  },
+
+  updateFilteredCount() {
+    const countElement = document.getElementById("filteredCount");
+    if (countElement) {
+      countElement.textContent = this.filteredPatients.length;
+    }
+  },
+
+  calculateAge(birthDate) {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birth.getDate())
+    ) {
+      age--;
+    }
+
+    return age;
+  },
+
+  viewPatientDetail(patientId) {
+    this.app.router.navigate("patient-record", { patientId: String(patientId) });
+  },
+
+  addToQueue(patientId) {
+    // Store selected patient for queue
+    const patient = this.allPatients.find((p) => p.id === patientId);
+    if (patient) {
+      this.app.storage.set("selectedPatientForQueue", patient);
+      this.app.router.navigate("patient-record", { patientId: String(patientId) });
+    }
+  },
+
+  refreshData() {
+    this.loadPatients();
+    this.updateStatistics();
+    this.app.showNotification("Data pasien berhasil diperbarui", "success");
+  },
+
+  destroy() {
+    // Cleanup if needed
+  },
 };
