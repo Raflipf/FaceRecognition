@@ -70,8 +70,8 @@ const AddPatientComponent = {
                                         <label class="form-label" for="gender">Jenis Kelamin *</label>
                                         <select id="gender" name="gender" class="form-select" required>
                                             <option value="">-- Pilih --</option>
-                                            <option value="M">Laki-laki</option>
-                                            <option value="F">Perempuan</option>
+                                            <option value="male">Laki-laki</option>
+                                            <option value="female">Perempuan</option>
                                         </select>
                                     </div>
                                 </div>
@@ -366,14 +366,17 @@ const AddPatientComponent = {
     // Dispose tensor
     tf.dispose(tensor);
 
-    // Get array from prediction tensor
     let embeddingArray;
     if (Array.isArray(prediction)) {
       embeddingArray = await Promise.all(prediction.map((t) => t.array()));
       prediction.forEach((t) => tf.dispose(t));
+      embeddingArray = embeddingArray.flat(Infinity);
     } else {
       embeddingArray = await prediction.array();
       tf.dispose(prediction);
+      embeddingArray = Array.isArray(embeddingArray[0])
+        ? embeddingArray.flat(Infinity)
+        : embeddingArray;
     }
 
     return embeddingArray;
@@ -398,16 +401,17 @@ const AddPatientComponent = {
     this.app.showLoading();
 
     try {
-      this.embeddings = [];
+      const allEmbeddings = [];
       for (const imageDataUrl of this.capturedPhotosData) {
         const embedding = await this.runInferenceOnImage(imageDataUrl);
-        this.embeddings.push(embedding);
+        allEmbeddings.push(...embedding); // Flatten all embeddings into one array
       }
 
-      // Save patient data with embeddings
-      this.savePatient();
+      this.embeddings = allEmbeddings;
 
-      // Show embeddings array
+      // Save patient data with embeddings
+      await this.savePatient();
+
       const embeddingOutput = document.getElementById("embeddingOutput");
       embeddingOutput.style.display = "block";
       embeddingOutput.style.whiteSpace = "pre-wrap";
@@ -416,8 +420,13 @@ const AddPatientComponent = {
       embeddingOutput.style.borderRadius = "5px";
       embeddingOutput.style.maxHeight = "300px";
       embeddingOutput.style.overflowY = "auto";
-      embeddingOutput.textContent = JSON.stringify(this.embeddings, null, 2);
+      embeddingOutput.textContent = `Embeddings generated: ${
+        this.embeddings.length
+      } numbers\n\nFirst 10 values: ${this.embeddings
+        .slice(0, 10)
+        .join(", ")}...`;
     } catch (error) {
+      console.error("Error in handleSubmit:", error);
       this.app.showNotification(
         "Gagal menjalankan inferensi model: " + error.message,
         "error"
@@ -449,7 +458,8 @@ const AddPatientComponent = {
 
     try {
       const token = this.app.currentUser.token;
-      const savedPatient = await import("../js/utils/api.js").then(api => api.addPatient(newPatient, token));
+      const api = await import("../js/utils/api.js");
+      const savedPatient = await api.addPatient(newPatient, token);
 
       this.app.showModal(
         "Pasien Berhasil Ditambahkan",
@@ -459,7 +469,11 @@ const AddPatientComponent = {
         }
       );
     } catch (error) {
-      this.app.showNotification("Gagal menambahkan pasien: " + error.message, "error");
+      console.error("Error saving patient:", error);
+      this.app.showNotification(
+        "Gagal menambahkan pasien: " + error.message,
+        "error"
+      );
     }
   },
 
@@ -490,11 +504,6 @@ const AddPatientComponent = {
     const phone = formData.get("phone");
     if (phone && (phone.length < 10 || phone.length > 13)) {
       errors.push("Nomor telepon tidak valid");
-    }
-
-    const patients = Storage.get("patients") || [];
-    if (patients.some((p) => p.nik === nik)) {
-      errors.push("NIK sudah terdaftar dalam sistem");
     }
 
     if (this.capturedPhotosData.length !== 5) {

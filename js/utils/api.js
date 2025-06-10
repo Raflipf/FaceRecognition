@@ -324,6 +324,7 @@ export {
   loginUser,
   addPatient,
   getPatients,
+  getPatientById,
   getDoctors,
   addDoctor,
   updateDoctor,

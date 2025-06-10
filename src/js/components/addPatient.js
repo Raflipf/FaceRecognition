@@ -1,10 +1,11 @@
-// Add Patient Component
-import { Camera } from '../utils/camera.js';
-import { Storage } from '../utils/storage.js';
+// Add Patient Component - Fixed Version
+import { Camera } from "../utils/camera.js";
+import { Storage } from "../utils/storage.js";
+import { addPatient } from "../../../js/utils/api.js";
 
 export const AddPatientComponent = {
-    render() {
-        return `
+  render() {
+    return `
             <div class="fade-in">
                 <div class="card">
                     <div class="card-header">
@@ -68,8 +69,9 @@ export const AddPatientComponent = {
                                         <label class="form-label" for="gender">Jenis Kelamin *</label>
                                         <select id="gender" name="gender" class="form-select" required>
                                             <option value="">-- Pilih --</option>
-                                            <option value="M">Laki-laki</option>
-                                            <option value="F">Perempuan</option>
+                                            <option value="male">Laki-laki</option>
+                                            <option value="female">Perempuan</option>
+                                            <option value="other">Lainnya</option>
                                         </select>
                                     </div>
                                 </div>
@@ -233,275 +235,379 @@ export const AddPatientComponent = {
                 </div>
             </div>
         `;
-    },
+  },
 
+  init(app) {
+    this.app = app;
+    this.currentStream = null;
+    this.capturedPhotoData = null;
+    this.capturedPhotos = [];
 
-    init(app) {
-        this.app = app;
-        this.currentStream = null;
-        this.capturedPhotoData = null;
-        this.capturedPhotos = []; // Array untuk menyimpan 5 foto
-        
-        this.setupEventListeners();
-        this.setupValidation();
-    },
+    this.setupEventListeners();
+    this.setupValidation();
+  },
 
-    setupEventListeners() {
-        const form = document.getElementById('addPatientForm');
-        const startPhotoBtn = document.getElementById('startPhotoBtn');
-        const stopPhotoBtn = document.getElementById('stopPhotoBtn');
-        const photoCaptureBtn = document.getElementById('photoCapture');
-        const retakePhotoBtn = document.getElementById('retakePhotoBtn');
+  setupEventListeners() {
+    const form = document.getElementById("addPatientForm");
+    const startPhotoBtn = document.getElementById("startPhotoBtn");
+    const stopPhotoBtn = document.getElementById("stopPhotoBtn");
+    const photoCaptureBtn = document.getElementById("photoCapture");
+    const retakePhotoBtn = document.getElementById("retakePhotoBtn");
 
-        // Form submission
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.handleSubmit();
-        });
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      this.handleSubmit();
+    });
 
-        // Photo capture events
-        startPhotoBtn.addEventListener('click', () => this.startPhotoCapture());
-        stopPhotoBtn.addEventListener('click', () => this.stopPhotoCapture());
-        photoCaptureBtn.addEventListener('click', () => this.capturePhoto());
-        retakePhotoBtn.addEventListener('click', () => this.retakePhoto());
-    },
+    startPhotoBtn.addEventListener("click", () => this.startPhotoCapture());
+    stopPhotoBtn.addEventListener("click", () => this.stopPhotoCapture());
+    photoCaptureBtn.addEventListener("click", () => this.capturePhoto());
+    retakePhotoBtn.addEventListener("click", () => this.retakePhoto());
+  },
 
-    setupValidation() {
-        const nikInput = document.getElementById('nik');
-        const phoneInput = document.getElementById('phone');
+  setupValidation() {
+    const nikInput = document.getElementById("nik");
+    const phoneInput = document.getElementById("phone");
 
-        // NIK validation
-        nikInput.addEventListener('input', (e) => {
-            e.target.value = e.target.value.replace(/\D/g, '');
-        });
+    nikInput.addEventListener("input", (e) => {
+      e.target.value = e.target.value.replace(/\D/g, "");
+    });
 
-        // Phone validation
-        phoneInput.addEventListener('input', (e) => {
-            e.target.value = e.target.value.replace(/\D/g, '');
-        });
-    },
+    phoneInput.addEventListener("input", (e) => {
+      e.target.value = e.target.value.replace(/\D/g, "");
+    });
+  },
 
-    async startPhotoCapture() {
-        try {
-            this.currentStream = await Camera.start('photoCamera');
-            
-            document.getElementById('photoPlaceholder').style.display = 'none';
-            document.getElementById('photoCamera').style.display = 'block';
-            document.getElementById('photoCapture').style.display = 'block';
-            document.getElementById('startPhotoBtn').style.display = 'none';
-            document.getElementById('stopPhotoBtn').style.display = 'inline-flex';
-            
-            this.updateCaptureButton();
-            
-        } catch (error) {
-            this.app.showNotification('Gagal mengakses kamera: ' + error.message, 'error');
-        }
-    },
+  async startPhotoCapture() {
+    try {
+      this.currentStream = await Camera.start("photoCamera");
 
-    stopPhotoCapture() {
-        if (this.currentStream) {
-            Camera.stop(this.currentStream);
-            this.currentStream = null;
-        }
-        
-        document.getElementById('photoPlaceholder').style.display = 'flex';
-        document.getElementById('photoCamera').style.display = 'none';
-        document.getElementById('photoCapture').style.display = 'none';
-        document.getElementById('startPhotoBtn').style.display = 'inline-flex';
-        document.getElementById('stopPhotoBtn').style.display = 'none';
-    },
+      document.getElementById("photoPlaceholder").style.display = "none";
+      document.getElementById("photoCamera").style.display = "block";
+      document.getElementById("photoCapture").style.display = "block";
+      document.getElementById("startPhotoBtn").style.display = "none";
+      document.getElementById("stopPhotoBtn").style.display = "inline-flex";
 
-    capturePhoto() {
-        const video = document.getElementById('photoCamera');
-        const canvas = document.getElementById('photoCanvas');
-        const capturedPhoto = document.getElementById('capturedPhoto');
+      this.updateCaptureButton();
+    } catch (error) {
+      this.app.showNotification(
+        "Gagal mengakses kamera: " + error.message,
+        "error"
+      );
+    }
+  },
 
-        // Pastikan array foto ada
-        if (!this.capturedPhotos) this.capturedPhotos = [];
+  stopPhotoCapture() {
+    if (this.currentStream) {
+      Camera.stop(this.currentStream);
+      this.currentStream = null;
+    }
 
-        if (this.capturedPhotos.length >= 5) {
-            this.app.showNotification('Sudah mengambil 5 foto!', 'info');
-            return;
-        }
+    document.getElementById("photoPlaceholder").style.display = "flex";
+    document.getElementById("photoCamera").style.display = "none";
+    document.getElementById("photoCapture").style.display = "none";
+    document.getElementById("startPhotoBtn").style.display = "inline-flex";
+    document.getElementById("stopPhotoBtn").style.display = "none";
+  },
 
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  capturePhoto() {
+    const video = document.getElementById("photoCamera");
+    const canvas = document.getElementById("photoCanvas");
+    const capturedPhoto = document.getElementById("capturedPhoto");
 
-        const photoData = canvas.toDataURL('image/jpeg', 0.8);
-        this.capturedPhotos.push(photoData);
+    if (!this.capturedPhotos) this.capturedPhotos = [];
 
-        this.capturedPhotoData = photoData;
+    if (this.capturedPhotos.length >= 5) {
+      this.app.showNotification("Sudah mengambil 5 foto!", "info");
+      return;
+    }
 
-        capturedPhoto.src = photoData;
-        capturedPhoto.style.display = 'block';
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        this.updatePhotoPreview();
-        this.updateCaptureButton();
-        this.app.showNotification(`Foto ${this.capturedPhotos.length}/5 berhasil diambil`, 'success');
+    const photoData = canvas.toDataURL("image/jpeg", 0.8);
+    this.capturedPhotos.push(photoData);
 
-        if (this.capturedPhotos.length === 5) {
-            this.stopPhotoCapture();
-            this.app.showNotification('Selesai! Sudah mengambil 5 foto untuk face recognition', 'success');
-        }
+    this.capturedPhotoData = photoData;
 
-        document.getElementById('photoPlaceholder').style.display = 'none';
-        document.getElementById('retakePhotoBtn').style.display = 'inline-flex';
-    },
+    capturedPhoto.src = photoData;
+    capturedPhoto.style.display = "block";
 
-    updateCaptureButton() {
-        const captureBtn = document.getElementById('photoCapture');
-        const count = this.capturedPhotos ? this.capturedPhotos.length : 0;
-        
-        if (count >= 5) {
-            captureBtn.textContent = 'Selesai (5/5)';
-            captureBtn.disabled = true;
+    this.updatePhotoPreview();
+    this.updateCaptureButton();
+    this.updatePhotoCounter();
+    this.app.showNotification(
+      `Foto ${this.capturedPhotos.length}/5 berhasil diambil`,
+      "success"
+    );
+
+    if (this.capturedPhotos.length === 5) {
+      this.stopPhotoCapture();
+      this.app.showNotification(
+        "Selesai! Sudah mengambil 5 foto untuk face recognition",
+        "success"
+      );
+    }
+
+    document.getElementById("photoPlaceholder").style.display = "none";
+    document.getElementById("retakePhotoBtn").style.display = "inline-flex";
+  },
+
+  updateCaptureButton() {
+    const captureBtn = document.getElementById("photoCapture");
+    const count = this.capturedPhotos ? this.capturedPhotos.length : 0;
+
+    if (count >= 5) {
+      captureBtn.innerHTML = '<i class="fas fa-check"></i> Selesai (5/5)';
+      captureBtn.disabled = true;
+    } else {
+      captureBtn.innerHTML = `<i class="fas fa-camera"></i> Ambil Foto (${count}/5)`;
+      captureBtn.disabled = false;
+    }
+  },
+
+  updatePhotoCounter() {
+    const counter = document.getElementById("photoCounter");
+    if (counter) {
+      counter.textContent = this.capturedPhotos.length;
+    }
+  },
+
+  updatePhotoPreview() {
+    const photoContainer = document.getElementById("photoContainer");
+    if (photoContainer) {
+      photoContainer.innerHTML = "";
+
+      for (let i = 0; i < 5; i++) {
+        const slot = document.createElement("div");
+        slot.className = "photo-slot";
+        slot.id = `slot${i + 1}`;
+
+        const slotNumber = document.createElement("span");
+        slotNumber.className = "slot-number";
+        slotNumber.textContent = i + 1;
+
+        if (this.capturedPhotos[i]) {
+          const img = document.createElement("img");
+          img.src = this.capturedPhotos[i];
+          img.style.width = "100%";
+          img.style.height = "100%";
+          img.style.objectFit = "cover";
+          img.style.borderRadius = "8px";
+          img.title = `Foto ${i + 1}`;
+
+          slot.appendChild(slotNumber);
+          slot.appendChild(img);
         } else {
-            captureBtn.textContent = `Ambil Foto (${count}/5)`;
-            captureBtn.disabled = false;
-        }
-    },
+          const placeholder = document.createElement("div");
+          placeholder.className = "slot-placeholder";
+          placeholder.innerHTML = '<i class="fas fa-camera"></i>';
 
-    updatePhotoPreview() {
-        const photoContainer = document.getElementById('photoContainer');
-        if (photoContainer) {
-            photoContainer.innerHTML = '';
-            this.capturedPhotos.forEach((photo, index) => {
-                const img = document.createElement('img');
-                img.src = photo;
-                img.style.width = '80px';
-                img.style.height = '80px';
-                img.style.objectFit = 'cover';
-                img.style.margin = '5px';
-                img.style.border = '2px solid #007bff';
-                img.style.borderRadius = '5px';
-                img.title = `Foto ${index + 1}`;
-                photoContainer.appendChild(img);
-            });
-        }
-    },
-
-    retakePhoto() {
-        // Reset semua foto
-        this.capturedPhotos = [];
-        this.capturedPhotoData = null;
-        
-        // Reset UI
-        document.getElementById('capturedPhoto').style.display = 'none';
-        document.getElementById('photoPlaceholder').style.display = 'flex';
-        document.getElementById('retakePhotoBtn').style.display = 'none';
-        document.getElementById('startPhotoBtn').style.display = 'inline-flex';
-        
-        // Reset preview container
-        const photoContainer = document.getElementById('photoContainer');
-        if (photoContainer) {
-            photoContainer.innerHTML = '';
-        }
-        
-        // Reset tombol capture
-        this.updateCaptureButton();
-        
-        this.app.showNotification('Semua foto dihapus. Silahkan ambil foto ulang.', 'info');
-    },
-
-    validateForm() {
-        const form = document.getElementById('addPatientForm');
-        const formData = new FormData(form);
-        const errors = [];
-
-        // Required fields validation
-        const requiredFields = ['fullName', 'nik', 'birthDate', 'gender', 'phone', 'address'];
-        requiredFields.forEach(field => {
-            if (!formData.get(field) || !formData.get(field).trim()) {
-                errors.push(`Field ${field} harus diisi`);
-            }
-        });
-
-        // NIK validation
-        const nik = formData.get('nik');
-        if (nik && nik.length !== 16) {
-            errors.push('NIK harus 16 digit');
+          slot.appendChild(slotNumber);
+          slot.appendChild(placeholder);
         }
 
-        // Phone validation
-        const phone = formData.get('phone');
-        if (phone && (phone.length < 10 || phone.length > 13)) {
-            errors.push('Nomor telepon tidak valid');
-        }
+        photoContainer.appendChild(slot);
+      }
+    }
+  },
 
-        // Check if NIK already exists
-        const patients = Storage.get('patients') || [];
-        if (patients.some(p => p.nik === nik)) {
-            errors.push('NIK sudah terdaftar dalam sistem');
-        }
+  retakePhoto() {
+    this.capturedPhotos = [];
+    this.capturedPhotoData = null;
 
-        // Photo validation - pastikan ada 5 foto
-        if (!this.capturedPhotos || this.capturedPhotos.length < 5) {
-            errors.push('Diperlukan 5 foto wajah pasien untuk face recognition');
-        }
+    document.getElementById("capturedPhoto").style.display = "none";
+    document.getElementById("photoPlaceholder").style.display = "flex";
+    document.getElementById("retakePhotoBtn").style.display = "none";
+    document.getElementById("startPhotoBtn").style.display = "inline-flex";
 
-        return errors;
-    },
+    this.updatePhotoPreview();
+    this.updatePhotoCounter();
 
-    handleSubmit() {
-        const errors = this.validateForm();
-        
-        if (errors.length > 0) {
-            this.app.showNotification('Error:\n' + errors.join('\n'), 'error');
-            return;
-        }
+    this.updateCaptureButton();
 
-        this.app.showLoading();
+    this.app.showNotification(
+      "Semua foto dihapus. Silahkan ambil foto ulang.",
+      "info"
+    );
+  },
 
-        // Simulate saving delay
-        setTimeout(() => {
-            this.savePatient();
-        }, 1000);
-    },
+  validateForm() {
+    const form = document.getElementById("addPatientForm");
+    const formData = new FormData(form);
+    const errors = [];
 
-    savePatient() {
-        const form = document.getElementById('addPatientForm');
-        const formData = new FormData(form);
-        
-        // Create patient object
-        const newPatient = {
-            id: Date.now(),
-            name: formData.get('fullName').trim(),
-            nik: formData.get('nik').trim(),
-            birthDate: formData.get('birthDate'),
-            gender: formData.get('gender'),
-            bloodType: formData.get('bloodType') || null,
-            phone: formData.get('phone').trim(),
-            email: formData.get('email').trim() || null,
-            address: formData.get('address').trim(),
-            emergencyContact: formData.get('emergencyContact').trim() || null,
-            photo: this.capturedPhotoData, // Foto terakhir untuk preview
-            photos: this.capturedPhotos,   // Semua 5 foto untuk face recognition
-            registrationDate: new Date().toISOString(),
-            status: 'active'
+    const requiredFields = [
+      "fullName",
+      "nik",
+      "birthDate",
+      "gender",
+      "phone",
+      "address",
+    ];
+    requiredFields.forEach((field) => {
+      if (!formData.get(field) || !formData.get(field).trim()) {
+        const fieldLabels = {
+          fullName: "Nama Lengkap",
+          nik: "NIK",
+          birthDate: "Tanggal Lahir",
+          gender: "Jenis Kelamin",
+          phone: "No. Telepon",
+          address: "Alamat",
         };
+        errors.push(`${fieldLabels[field]} harus diisi`);
+      }
+    });
 
-        // Save to storage
-        const patients = Storage.get('patients') || [];
-        patients.push(newPatient);
-        Storage.set('patients', patients);
+    const nik = formData.get("nik");
+    if (nik && nik.length !== 16) {
+      errors.push("NIK harus 16 digit");
+    }
 
+    const phone = formData.get("phone");
+    if (phone && (phone.length < 10 || phone.length > 13)) {
+      errors.push("Nomor telepon tidak valid (10-13 digit)");
+    }
+    return errors;
+  },
+
+  async handleSubmit() {
+    const errors = this.validateForm();
+
+    if (errors.length > 0) {
+      this.app.showNotification("Error:\n" + errors.join("\n"), "error");
+      return;
+    }
+
+    this.app.showLoading("Menyimpan data pasien...");
+
+    try {
+      await this.savePatientToBackend();
+    } catch (error) {
+      this.app.hideLoading();
+      this.app.showNotification(
+        "Gagal menyimpan pasien: " + error.message,
+        "error"
+      );
+    }
+  },
+
+  getAuthToken() {
+    let token = Storage.get("token");
+
+    if (token) {
+      return token;
+    }
+
+    if (this.app && this.app.currentUser && this.app.currentUser.token) {
+      return this.app.currentUser.token;
+    }
+
+    const userData = Storage.get("currentUser");
+    if (userData && userData.token) {
+      return userData.token;
+    }
+
+    try {
+      const sessionToken = sessionStorage.getItem("token");
+      if (sessionToken) {
+        return sessionToken;
+      }
+    } catch (e) {
+      console.warn("Session storage not available");
+    }
+
+    return null;
+  },
+
+  async savePatientToBackend() {
+    const form = document.getElementById("addPatientForm");
+    const formData = new FormData(form);
+
+    const token = this.getAuthToken();
+
+    if (!token) {
+      throw new Error("Token tidak ditemukan. Silakan login ulang.");
+    }
+
+    const patientData = {
+      name: formData.get("fullName").trim(),
+      nik: formData.get("nik").trim(),
+      birthDate: formData.get("birthDate"),
+      gender: formData.get("gender"),
+      bloodType: formData.get("bloodType") || undefined,
+      phone: formData.get("phone").trim(),
+      email: formData.get("email").trim() || undefined,
+      address: formData.get("address").trim(),
+      emergencyContact: formData.get("emergencyContact").trim() || undefined,
+      photos: this.capturedPhotos,
+      embeddings: [],
+      status: "active",
+    };
+
+    Object.keys(patientData).forEach((key) => {
+      if (patientData[key] === undefined) {
+        delete patientData[key];
+      }
+    });
+
+    try {
+      const response = await addPatient(patientData, token);
+
+      this.app.hideLoading();
+
+      this.app.showModal(
+        "Pasien Berhasil Ditambahkan",
+        `Pasien ${patientData.name} telah berhasil didaftarkan dalam sistem dengan 5 foto untuk face recognition.\n\nNIK: ${patientData.nik}`,
+        () => {
+          this.app.router.navigate("dashboard");
+        }
+      );
+
+      this.savePatientToLocalStorage(patientData, response);
+    } catch (error) {
+      console.error("Backend error:", error);
+
+      try {
+        this.savePatientToLocalStorage(patientData);
         this.app.hideLoading();
 
-        // Show success message
         this.app.showModal(
-            'Pasien Berhasil Ditambahkan',
-            `Pasien ${newPatient.name} telah berhasil didaftarkan dalam sistem dengan 5 foto untuk face recognition.\n\nNIK: ${newPatient.nik}`,
-            () => {
-                this.app.router.navigate('dashboard');
-            }
+          "Pasien Disimpan Lokal",
+          `Pasien ${patientData.name} berhasil disimpan secara lokal.\n\nCatatan: Data akan disinkronisasi ketika koneksi ke server pulih.\n\nNIK: ${patientData.nik}`,
+          () => {
+            this.app.router.navigate("dashboard");
+          }
         );
-    },
-
-    destroy() {
-        if (this.currentStream) {
-            Camera.stop(this.currentStream);
-        }
+      } catch (localError) {
+        throw new Error(
+          "Gagal menyimpan ke server dan local storage: " + localError.message
+        );
+      }
     }
+  },
+
+  savePatientToLocalStorage(patientData, backendResponse = null) {
+    const localPatient = {
+      id: backendResponse?.data?.id || Date.now(),
+      ...patientData,
+      photo: this.capturedPhotoData,
+      registrationDate: new Date().toISOString(),
+      synced: backendResponse ? true : false,
+    };
+
+    const patients = Storage.get("patients") || [];
+    patients.push(localPatient);
+    Storage.set("patients", patients);
+
+    return localPatient;
+  },
+
+  destroy() {
+    if (this.currentStream) {
+      Camera.stop(this.currentStream);
+    }
+  },
 };
