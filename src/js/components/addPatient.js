@@ -159,7 +159,7 @@ export const AddPatientComponent = {
                                     <video id="photoCamera" class="camera-preview" style="display: none;" autoplay muted></video>
                                     <canvas id="photoCanvas" style="display: none;"></canvas>
                                     <img id="capturedPhoto" class="captured-image" style="display: none;" alt="Captured Photo">
-                                    <button id="photoCapture" class="capture-btn" style="display: none;">
+                                    <button type="button" id="photoCapture" class="capture-btn" style="display: none;">
                                         <i class="fas fa-camera"></i>
                                     </button>
                                 </div>
@@ -259,10 +259,29 @@ export const AddPatientComponent = {
       this.handleSubmit();
     });
 
-    startPhotoBtn.addEventListener("click", () => this.startPhotoCapture());
-    stopPhotoBtn.addEventListener("click", () => this.stopPhotoCapture());
-    photoCaptureBtn.addEventListener("click", () => this.capturePhoto());
-    retakePhotoBtn.addEventListener("click", () => this.retakePhoto());
+    startPhotoBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.startPhotoCapture();
+    });
+
+    stopPhotoBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.stopPhotoCapture();
+    });
+
+    photoCaptureBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.capturePhoto();
+    });
+
+    retakePhotoBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.retakePhoto();
+    });
   },
 
   setupValidation() {
