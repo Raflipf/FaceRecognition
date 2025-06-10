@@ -279,8 +279,9 @@ export const PatientsComponent = {
     }
 
     tbody.innerHTML = this.filteredPatients
-      .map(
-        (patient) => `
+      .map((patient) => {
+        const patientId = patient._id || patient.id;
+        return `
             <tr>
                 <td>
                     <div class="patient-avatar" style="width: 40px; height: 40px; font-size: 1rem;">
@@ -313,24 +314,20 @@ export const PatientsComponent = {
                 <td>
                     <div style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
                         <button class="btn btn-primary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;"
-                                onclick="patientsComponent.viewPatientDetail(${
-                                  patient.id
-                                })">
+                                onclick="patientsComponent.viewPatientDetail('${patientId}')">
                             <i class="fas fa-eye"></i>
                             Detail
                         </button>
                         <button class="btn btn-success" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;"
-                                onclick="patientsComponent.addToQueue(${
-                                  patient.id
-                                })">
+                                onclick="patientsComponent.addToQueue('${patientId}')">
                             <i class="fas fa-plus"></i>
                             Antri
                         </button>
                     </div>
                 </td>
             </tr>
-        `
-      )
+        `;
+      })
       .join("");
   },
 
@@ -350,8 +347,9 @@ export const PatientsComponent = {
     }
 
     container.innerHTML = this.filteredPatients
-      .map(
-        (patient) => `
+      .map((patient) => {
+        const patientId = patient._id || patient.id;
+        return `
             <div class="patient-card">
                 <div class="patient-header">
                     <div class="patient-avatar">
@@ -380,16 +378,12 @@ export const PatientsComponent = {
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                         <button class="btn btn-primary" style="font-size: 0.875rem; padding: 0.5rem 1rem;"
-                                onclick="patientsComponent.viewPatientDetail(${
-                                  patient.id
-                                })">
+                                onclick="patientsComponent.viewPatientDetail('${patientId}')">
                             <i class="fas fa-eye"></i>
                             Detail
                         </button>
                         <button class="btn btn-success" style="font-size: 0.875rem; padding: 0.5rem 1rem;"
-                                onclick="patientsComponent.addToQueue(${
-                                  patient.id
-                                })">
+                                onclick="patientsComponent.addToQueue('${patientId}')">
                             <i class="fas fa-plus"></i>
                             Tambah Antrian
                         </button>
@@ -431,8 +425,8 @@ export const PatientsComponent = {
                     </div>
                 </div>
             </div>
-        `
-      )
+        `;
+      })
       .join("");
   },
 
@@ -521,19 +515,24 @@ export const PatientsComponent = {
   },
 
   viewPatientDetail(patientId) {
+    console.log("Navigating to patient detail with ID:", patientId);
     this.app.router.navigate("patient-record", {
       patientId: String(patientId),
     });
   },
 
   addToQueue(patientId) {
+    console.log("Adding patient to queue with ID:", patientId);
     // Store selected patient for queue
-    const patient = this.allPatients.find((p) => p.id === patientId);
+    const patient = this.allPatients.find((p) => (p._id || p.id) === patientId);
     if (patient) {
       this.app.storage.set("selectedPatientForQueue", patient);
       this.app.router.navigate("patient-record", {
         patientId: String(patientId),
       });
+    } else {
+      console.error("Patient not found with ID:", patientId);
+      this.app.showNotification("Pasien tidak ditemukan", "error");
     }
   },
 

@@ -3,7 +3,7 @@ import { Storage } from "../utils/storage.js";
 
 export const PatientRecordComponent = {
   async render(patientId) {
-    const patient = this.patient || (await this.getPatient(patientId));
+    const patient = await this.getPatient(patientId);
 
     if (!patient) {
       return `
@@ -18,7 +18,7 @@ export const PatientRecordComponent = {
                         <div style="text-align: center; padding: 2rem;">
                             <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #f59e0b; margin-bottom: 1rem;"></i>
                             <h3>Pasien tidak ditemukan</h3>
-                            <p style="color: #64748b;">Data pasien tidak dapat ditemukan dalam sistem.</p>
+                            <p style="color: #64748b;">Data pasien dengan ID ${patientId} tidak dapat ditemukan dalam sistem.</p>
                             <button class="btn btn-primary" onclick="hospitalApp.router.navigate('dashboard')">
                                 <i class="fas fa-arrow-left"></i>
                                 Kembali ke Dashboard
@@ -29,7 +29,8 @@ export const PatientRecordComponent = {
             `;
     }
 
-    const medicalHistory = this.getMedicalHistory(patient.id);
+    const patientIdToUse = patient._id || patient.id;
+    const medicalHistory = this.getMedicalHistory(patientIdToUse);
 
     return `
             <div class="fade-in">
@@ -39,13 +40,17 @@ export const PatientRecordComponent = {
                             <i class="fas fa-user"></i>
                             Rekam Medis Pasien
                         </h2>
-                        <button class="btn btn-secondary" onclick="hospitalApp.router.navigate('dashboard')">
+                        <button class="btn btn-secondary" onclick="hospitalApp.router.navigate('patients')">
                             <i class="fas fa-arrow-left"></i>
-                            Kembali
+                            Kembali ke Daftar Pasien
                         </button>
                     </div>
 
                     <div class="patient-info">
+                        <div class="info-item">
+                            <div class="info-label">ID Pasien</div>
+                            <div class="info-value">${patientIdToUse}</div>
+                        </div>
                         <div class="info-item">
                             <div class="info-label">Nama Lengkap</div>
                             <div class="info-value">${patient.name}</div>
@@ -68,17 +73,21 @@ export const PatientRecordComponent = {
                         </div>
                         <div class="info-item">
                             <div class="info-label">Jenis Kelamin</div>
-                            <div class="info-value">${
-                              patient.gender === "M" ? "Laki-laki" : "Perempuan"
-                            }</div>
+                            <div class="info-value">${this.formatGender(
+                              patient.gender
+                            )}</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Alamat</div>
-                            <div class="info-value">${patient.address}</div>
+                            <div class="info-value">${
+                              patient.address || "-"
+                            }</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">No. Telepon</div>
-                            <div class="info-value">${patient.phone}</div>
+                            <div class="info-value">${
+                              patient.phone || "-"
+                            }</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Golongan Darah</div>
@@ -152,43 +161,96 @@ export const PatientRecordComponent = {
   },
 
   async getPatient(patientId) {
+    console.log("PatientRecordComponent.getPatient called with ID:", patientId);
+
     // First check if there's a currently recognized patient
     const recognizedPatient = Storage.get("currentRecognizedPatient");
     if (recognizedPatient) {
+      console.log("Found recognized patient:", recognizedPatient.name);
       Storage.remove("currentRecognizedPatient");
       return recognizedPatient;
     }
 
-    // Otherwise, find by ID with type-coerced comparison as string
-    if (!patientId) return null;
-
-    const patients = Storage.get("patients") || [];
-    let patient = patients.find((p) => String(p.id) === String(patientId)); // compare as strings
-
-    if (!patient) {
-      // Fallback: fetch patient from API
-      try {
-        const token = this.app.currentUser.token;
-        const api = await import("../../../js/utils/api.js");
-        patient = await api.getPatientById(patientId, token);
-        if (patient) {
-          // Update Storage with fetched patient
-          patients.push(patient);
-          Storage.set("patients", patients);
-        }
-      } catch (error) {
-        console.error("Failed to fetch patient from API:", error);
-      }
+    const selectedPatient = Storage.get("selectedPatientForQueue");
+    if (selectedPatient) {
+      console.log("Found selected patient for queue:", selectedPatient.name);
+      Storage.remove("selectedPatientForQueue");
+      return selectedPatient;
     }
 
-    return patient;
+    if (!patientId) {
+      console.log("No patientId provided");
+      return null;
+    }
+
+    const patients = Storage.get("patients") || [];
+    console.log("Searching in", patients.length, "patients for ID:", patientId);
+
+    let patient = patients.find((p) => {
+      const mongoId = p._id ? p._id.toString() : null;
+      const localId = p.id ? p.id.toString() : null;
+      const searchId = patientId.toString();
+
+      return mongoId === searchId || localId === searchId;
+    });
+
+    if (patient) {
+      console.log("Found patient in local storage:", patient.name);
+      return patient;
+    }
+
+    try {
+      console.log("Fetching patient from API with ID:", patientId);
+      const token = this.app.currentUser.token;
+      const api = await import("../../../js/utils/api.js");
+      patient = await api.getPatientById(patientId, token);
+
+      if (patient) {
+        console.log("Fetched patient from API:", patient.name);
+        patients.push(patient);
+        Storage.set("patients", patients);
+        return patient;
+      }
+    } catch (error) {
+      console.error("Failed to fetch patient from API:", error);
+    }
+
+    console.log("Patient not found with ID:", patientId);
+    return null;
   },
 
   getMedicalHistory(patientId) {
+    console.log("Getting medical history for patient ID:", patientId);
+
     const queue = Storage.get("queue") || [];
-    return queue
-      .filter((q) => q.patientId === patientId && q.status === "completed")
+    console.log("Total queue entries:", queue.length);
+
+    const searchId = patientId ? patientId.toString() : null;
+
+    const history = queue
+      .filter((q) => {
+        const queuePatientId = q.patient_id
+          ? q.patient_id.toString()
+          : q.patientId
+          ? q.patientId.toString()
+          : null;
+        const isCompleted = q.status === "completed";
+        const matchesPatient = queuePatientId === searchId;
+
+        console.log("Queue entry:", {
+          queuePatientId,
+          searchId,
+          matchesPatient,
+          isCompleted,
+          status: q.status,
+        });
+
+        return matchesPatient && isCompleted;
+      })
       .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    console.log("Found", history.length, "medical history entries for patient");
+    return history;
   },
 
   renderMedicalHistory(history) {
@@ -217,10 +279,12 @@ export const PatientRecordComponent = {
                 </div>
                 <div class="history-doctor">
                     <i class="fas fa-user-md"></i>
-                    Dr. ${visit.doctorName} - ${visit.doctorSpecialty}
+                    Dr. ${visit.doctorName || "Nama Dokter"} - ${
+          visit.doctorSpecialty || "Spesialisasi"
+        }
                 </div>
                 <div class="history-complaint">
-                    <strong>Keluhan:</strong> ${visit.complaint}
+                    <strong>Keluhan:</strong> ${visit.complaint || "-"}
                     ${
                       visit.diagnosis
                         ? `<br><strong>Diagnosis:</strong> ${visit.diagnosis}`
@@ -265,6 +329,7 @@ export const PatientRecordComponent = {
   },
 
   calculateAge(birthDate) {
+    if (!birthDate) return 0;
     const today = new Date();
     const birth = new Date(birthDate);
     let age = today.getFullYear() - birth.getFullYear();
@@ -280,15 +345,37 @@ export const PatientRecordComponent = {
     return age;
   },
 
+  formatGender(gender) {
+    if (!gender) return "-";
+    const lowerGender = gender.toLowerCase();
+    switch (lowerGender) {
+      case "male":
+        return "Laki-laki";
+      case "female":
+        return "Perempuan";
+      case "other":
+        return "Lainnya";
+      default:
+        return "-";
+    }
+  },
+
   async init(app, patientId) {
+    console.log(
+      "PatientRecordComponent.init called with patientId:",
+      patientId
+    );
     this.app = app;
     this.patientId = patientId;
     this.patient = await this.getPatient(patientId);
 
-    if (!this.patient) return;
+    if (!this.patient) {
+      console.log("No patient found, component will show error state");
+      return;
+    }
 
+    console.log("Patient loaded:", this.patient.name);
     await this.loadDoctors();
-
     this.setupEventListeners();
   },
 
@@ -348,14 +435,16 @@ export const PatientRecordComponent = {
       return;
     }
 
+    const patientId = this.patient._id || this.patient.id;
+
     // Create new queue entry with valid _id fields
     const newQueueEntry = {
-      patient_id: this.patient._id || this.patient.id, // use _id if available
+      patient_id: patientId,
       doctor_id: doctor._id,
       complaint: complaint,
       priority: priority,
       status: "waiting",
-      queueNumber: this.getNextQueueNumber(doctor._id), // keep capitalization as in example
+      queueNumber: this.getNextQueueNumber(doctor._id),
       examinationStartTime: null,
       completionTime: null,
       diagnosis: "",
@@ -405,12 +494,14 @@ export const PatientRecordComponent = {
     const queue = Storage.get("queue") || [];
     const today = new Date().toDateString();
 
-    const todayQueue = queue.filter(
-      (q) =>
-        q.doctorId === doctorId &&
+    const todayQueue = queue.filter((q) => {
+      const qDoctorId = q.doctor_id || q.doctorId;
+      return (
+        qDoctorId === doctorId &&
         new Date(q.timestamp).toDateString() === today &&
         q.status !== "completed"
-    );
+      );
+    });
 
     return todayQueue.length + 1;
   },
