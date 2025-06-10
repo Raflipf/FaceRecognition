@@ -398,11 +398,15 @@ body {
     border-radius: var(--radius-lg);
     overflow: hidden;
     margin-bottom: 1rem;
+    aspect-ratio: 16 / 9;
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto 1rem auto;
 }
 
 .camera-preview {
     width: 100%;
-    height: 400px;
+    height: 100%;
     object-fit: cover;
 }
 
@@ -410,7 +414,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 400px;
+    height: 100%;
     background: hsl(210 11% 15%);
     color: white;
     flex-direction: column;
@@ -733,6 +737,20 @@ body {
 
     .search-filter-section {
         grid-template-columns: 1fr;
+    }
+
+    .camera-container {
+        aspect-ratio: 16 / 9;
+    }
+
+    .camera-placeholder i {
+        font-size: 3rem;
+    }
+
+    .capture-btn {
+        width: 50px;
+        height: 50px;
+        bottom: 0.5rem;
     }
 }
 

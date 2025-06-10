@@ -158,65 +158,65 @@ export const AddPatientComponent = {
                                     </div>
                                     <video id="photoCamera" class="camera-preview" style="display: none;" autoplay muted></video>
                                     <canvas id="photoCanvas" style="display: none;"></canvas>
-                                    <img id="capturedPhoto" class="captured-image" style="display: none;" alt="Captured Photo">
                                     <button type="button" id="photoCapture" class="capture-btn" style="display: none;">
                                         <i class="fas fa-camera"></i>
                                     </button>
                                 </div>
 
-                                 <div class="photos-preview-section" style="margin-top: 1.5rem;">
-                                    <h4 style="text-align: center; margin-bottom: 1rem; color: #4a5568;">
-                                        <i class="fas fa-images"></i>
-                                        Foto yang Diambil (<span id="photoCounter">0</span>/5)
-                                    </h4>
+                                <div class="photos-preview-section" style="margin-top: 1rem;">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                                        <h4 style="margin: 0; color: #4a5568; font-size: 1rem;">
+                                            <i class="fas fa-images"></i>
+                                            Foto yang Diambil (<span id="photoCounter">0</span>/5)
+                                        </h4>
+                                        <div style="display: flex; gap: 0.5rem;">
+                                            <button type="button" id="startPhotoBtn" class="btn btn-primary btn-sm">
+                                                <i class="fas fa-video"></i>
+                                                Mulai Kamera
+                                            </button>
+                                            <button type="button" id="retakePhotoBtn" class="btn btn-secondary btn-sm" style="display: none;">
+                                                <i class="fas fa-redo"></i>
+                                                Ambil Ulang
+                                            </button>
+                                            <button type="button" id="stopPhotoBtn" class="btn btn-secondary btn-sm" style="display: none;">
+                                                <i class="fas fa-video-slash"></i>
+                                                Berhenti
+                                            </button>
+                                        </div>
+                                    </div>
                                     
-                                    <div class="photos-grid" id="photoContainer">
-                                        <div class="photo-slot" id="slot1">
-                                            <span class="slot-number">1</span>
-                                            <div class="slot-placeholder">
+                                    <div class="photos-horizontal-grid" id="photoContainer">
+                                        <div class="photo-slot-small" id="slot1">
+                                            <span class="slot-number-small">1</span>
+                                            <div class="slot-placeholder-small">
                                                 <i class="fas fa-camera"></i>
                                             </div>
                                         </div>
-                                        <div class="photo-slot" id="slot2">
-                                            <span class="slot-number">2</span>
-                                            <div class="slot-placeholder">
+                                        <div class="photo-slot-small" id="slot2">
+                                            <span class="slot-number-small">2</span>
+                                            <div class="slot-placeholder-small">
                                                 <i class="fas fa-camera"></i>
                                             </div>
                                         </div>
-                                        <div class="photo-slot" id="slot3">
-                                            <span class="slot-number">3</span>
-                                            <div class="slot-placeholder">
+                                        <div class="photo-slot-small" id="slot3">
+                                            <span class="slot-number-small">3</span>
+                                            <div class="slot-placeholder-small">
                                                 <i class="fas fa-camera"></i>
                                             </div>
                                         </div>
-                                        <div class="photo-slot" id="slot4">
-                                            <span class="slot-number">4</span>
-                                            <div class="slot-placeholder">
+                                        <div class="photo-slot-small" id="slot4">
+                                            <span class="slot-number-small">4</span>
+                                            <div class="slot-placeholder-small">
                                                 <i class="fas fa-camera"></i>
                                             </div>
                                         </div>
-                                        <div class="photo-slot" id="slot5">
-                                            <span class="slot-number">5</span>
-                                            <div class="slot-placeholder">
+                                        <div class="photo-slot-small" id="slot5">
+                                            <span class="slot-number-small">5</span>
+                                            <div class="slot-placeholder-small">
                                                 <i class="fas fa-camera"></i>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                                
-                                <div style="text-align: center; margin-top: 1rem;">
-                                    <button type="button" id="startPhotoBtn" class="btn btn-primary">
-                                        <i class="fas fa-video"></i>
-                                        Mulai Kamera
-                                    </button>
-                                    <button type="button" id="retakePhotoBtn" class="btn btn-secondary" style="display: none;">
-                                        <i class="fas fa-redo"></i>
-                                        Ambil Ulang
-                                    </button>
-                                    <button type="button" id="stopPhotoBtn" class="btn btn-secondary" style="display: none;">
-                                        <i class="fas fa-video-slash"></i>
-                                        Berhenti
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -234,6 +234,95 @@ export const AddPatientComponent = {
                     </form>
                 </div>
             </div>
+
+            <style>
+                .photos-horizontal-grid {
+                    display: flex;
+                    gap: 0.5rem;
+                    flex-wrap: wrap;
+                    justify-content: flex-start;
+                    align-items: center;
+                }
+
+                .photo-slot-small {
+                    position: relative;
+                    width: 80px;
+                    height: 80px;
+                    border: 2px dashed #cbd5e0;
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: #f7fafc;
+                    transition: all 0.3s ease;
+                }
+
+                .photo-slot-small:hover {
+                    border-color: #3182ce;
+                    background: #ebf8ff;
+                }
+
+                .photo-slot-small.filled {
+                    border-color: #38a169;
+                    border-style: solid;
+                    background: #f0fff4;
+                }
+
+                .slot-number-small {
+                    position: absolute;
+                    top: -8px;
+                    left: -8px;
+                    background: #3182ce;
+                    color: white;
+                    width: 20px;
+                    height: 20px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 0.75rem;
+                    font-weight: bold;
+                    z-index: 2;
+                }
+
+                .slot-placeholder-small {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    color: #a0aec0;
+                    font-size: 1rem;
+                }
+
+                .btn-sm {
+                    padding: 0.5rem 1rem;
+                    font-size: 0.875rem;
+                }
+
+                .photos-preview-section {
+                    background: #f8f9fa;
+                    padding: 1rem;
+                    border-radius: 8px;
+                    border: 1px solid #e9ecef;
+                }
+
+                @media (max-width: 640px) {
+                    .photos-horizontal-grid {
+                        justify-content: center;
+                    }
+                    
+                    .photo-slot-small {
+                        width: 60px;
+                        height: 60px;
+                    }
+                    
+                    .slot-number-small {
+                        width: 16px;
+                        height: 16px;
+                        font-size: 0.625rem;
+                    }
+                }
+            </style>
         `;
   },
 
@@ -332,7 +421,6 @@ export const AddPatientComponent = {
   capturePhoto() {
     const video = document.getElementById("photoCamera");
     const canvas = document.getElementById("photoCanvas");
-    const capturedPhoto = document.getElementById("capturedPhoto");
 
     if (!this.capturedPhotos) this.capturedPhotos = [];
 
@@ -351,9 +439,6 @@ export const AddPatientComponent = {
 
     this.capturedPhotoData = photoData;
 
-    capturedPhoto.src = photoData;
-    capturedPhoto.style.display = "block";
-
     this.updatePhotoPreview();
     this.updateCaptureButton();
     this.updatePhotoCounter();
@@ -370,7 +455,6 @@ export const AddPatientComponent = {
       );
     }
 
-    document.getElementById("photoPlaceholder").style.display = "none";
     document.getElementById("retakePhotoBtn").style.display = "inline-flex";
   },
 
@@ -401,27 +485,29 @@ export const AddPatientComponent = {
 
       for (let i = 0; i < 5; i++) {
         const slot = document.createElement("div");
-        slot.className = "photo-slot";
+        slot.className = "photo-slot-small";
         slot.id = `slot${i + 1}`;
 
         const slotNumber = document.createElement("span");
-        slotNumber.className = "slot-number";
+        slotNumber.className = "slot-number-small";
         slotNumber.textContent = i + 1;
 
         if (this.capturedPhotos[i]) {
+          slot.classList.add("filled");
+
           const img = document.createElement("img");
           img.src = this.capturedPhotos[i];
           img.style.width = "100%";
           img.style.height = "100%";
           img.style.objectFit = "cover";
-          img.style.borderRadius = "8px";
+          img.style.borderRadius = "6px";
           img.title = `Foto ${i + 1}`;
 
           slot.appendChild(slotNumber);
           slot.appendChild(img);
         } else {
           const placeholder = document.createElement("div");
-          placeholder.className = "slot-placeholder";
+          placeholder.className = "slot-placeholder-small";
           placeholder.innerHTML = '<i class="fas fa-camera"></i>';
 
           slot.appendChild(slotNumber);
@@ -437,14 +523,12 @@ export const AddPatientComponent = {
     this.capturedPhotos = [];
     this.capturedPhotoData = null;
 
-    document.getElementById("capturedPhoto").style.display = "none";
     document.getElementById("photoPlaceholder").style.display = "flex";
     document.getElementById("retakePhotoBtn").style.display = "none";
     document.getElementById("startPhotoBtn").style.display = "inline-flex";
 
     this.updatePhotoPreview();
     this.updatePhotoCounter();
-
     this.updateCaptureButton();
 
     this.app.showNotification(
