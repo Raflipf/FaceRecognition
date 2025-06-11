@@ -72,44 +72,29 @@ export const QueueComponent = {
     console.log("Available doctors:", doctors.length);
 
     return queues.map((queue) => {
-      // Convert IDs to string for comparison
-      const queuePatientId = queue.patient_id?.toString();
-      const queueDoctorId = queue.doctor_id?.toString();
+      // Handle both direct fields and populated objects
+      const patient =
+        queue.patient_id && typeof queue.patient_id === "object"
+          ? queue.patient_id
+          : this.patients.find(
+              (p) =>
+                (p._id || p.id)?.toString() === queue.patient_id?.toString()
+            );
 
-      // Find patient - handle both _id and id fields
-      const patient = patients.find((p) => {
-        const patientId = (p._id || p.id)?.toString();
-        return patientId && patientId === queuePatientId;
-      });
-
-      // Find doctor - handle both _id and id fields
-      const doctor = doctors.find((d) => {
-        const doctorId = (d._id || d.id)?.toString();
-        return doctorId && doctorId === queueDoctorId;
-      });
-
-      if (!patient) {
-        console.warn("Patient not found for queue:", queue.patient_id);
-        console.warn(
-          "Available patient IDs:",
-          patients.map((p) => (p._id || p.id)?.toString())
-        );
-      }
-      if (!doctor) {
-        console.warn("Doctor not found for queue:", queue.doctor_id);
-        console.warn(
-          "Available doctor IDs:",
-          doctors.map((d) => (d._id || d.id)?.toString())
-        );
-      }
+      const doctor =
+        queue.doctor_id && typeof queue.doctor_id === "object"
+          ? queue.doctor_id
+          : this.doctors.find(
+              (d) => (d._id || d.id)?.toString() === queue.doctor_id?.toString()
+            );
 
       return {
         ...queue,
         id: queue._id || queue.id,
-        patientId: queue.patient_id,
-        doctorId: queue.doctor_id,
+        patientId: queue.patient_id?._id || queue.patient_id,
+        doctorId: queue.doctor_id?._id || queue.doctor_id,
         patientName: patient ? patient.name : "Pasien Tidak Dikenal",
-        doctorName: doctor ? doctor.name : "Dokter Tidak Dikenal",
+        doctorName: doctor ? `Dr. ${doctor.name}` : "Dokter Tidak Dikenal",
         doctorSpecialty: doctor
           ? doctor.specialty
           : "Spesialisasi Tidak Dikenal",
@@ -466,21 +451,18 @@ export const QueueComponent = {
     this.app = app;
     window.queueComponent = this;
 
-    // Load data
+    // Load all required data first
     await this.loadDoctors();
     await this.loadPatients();
     await this.loadQueues();
 
-    // Render dulu ke DOM (pastikan ada fungsi render ke container ya)
-    const container = document.getElementById("app-content"); // atau apapun container lo
+    // Then render
+    const container = document.getElementById("app-content");
     if (container) {
       container.innerHTML = this.render();
     }
 
-    // Baru pasang event listener
     this.setupEventListeners();
-
-    // Mulai auto refresh
     this.startAutoRefresh();
   },
 
