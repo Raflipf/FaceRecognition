@@ -2,26 +2,26 @@ import { Storage } from "../utils/storage.js";
 import {
   getDoctors,
   getQueues,
-  getPatients, // Add this import
+  getPatients,
   addQueue,
   updateQueue,
 } from "../../../js/utils/api.js";
 
 export const QueueComponent = {
   doctors: [],
-  patients: [], // Add this property
+  patients: [],
   queues: [],
 
   async loadPatients() {
     try {
       const token = this.app.currentUser.token;
       const patients = await getPatients(token);
-      console.log("Loaded patients:", patients); // Tambahkan ini
+      console.log("Loaded patients:", patients);
       this.patients = patients;
       Storage.set("patients", patients);
       return patients;
     } catch (error) {
-      console.error("Failed to load patients:", error); // Tambahkan error detail
+      console.error("Failed to load patients:", error);
       this.patients = Storage.get("patients") || [];
       return this.patients;
     }
@@ -31,10 +31,10 @@ export const QueueComponent = {
     try {
       const token = this.app.currentUser.token;
       this.doctors = await getDoctors(token);
-      console.log("Loaded doctors:", this.doctors); // Tambahkan ini
+      console.log("Loaded doctors:", this.doctors);
       Storage.set("doctors", this.doctors);
     } catch (error) {
-      console.error("Failed to load doctors:", error); // Tambahkan error detail
+      console.error("Failed to load doctors:", error);
       this.app.showNotification(
         "Gagal mengambil data dokter: " + error.message,
         "error"
@@ -61,7 +61,6 @@ export const QueueComponent = {
   },
 
   async processQueueData(queues) {
-    // Ensure we have fresh patient and doctor data
     const patients =
       this.patients.length > 0 ? this.patients : await this.loadPatients();
     const doctors =
@@ -72,7 +71,6 @@ export const QueueComponent = {
     console.log("Available doctors:", doctors.length);
 
     return queues.map((queue) => {
-      // Handle both direct fields and populated objects
       const patient =
         queue.patient_id && typeof queue.patient_id === "object"
           ? queue.patient_id
@@ -232,7 +230,6 @@ export const QueueComponent = {
 
     return queue
       .filter((q) => {
-        // Handle both doctorId and doctor_id fields
         const queueDoctorId = q.doctorId || q.doctor_id;
         const matchDoctor =
           !doctorFilter || queueDoctorId?.toString() === doctorFilter;
@@ -245,7 +242,6 @@ export const QueueComponent = {
         return matchDoctor && matchStatus && matchDate;
       })
       .sort((a, b) => {
-        // Sort by priority first, then by timestamp
         const priorityOrder = { emergency: 3, urgent: 2, normal: 1 };
         const aPriority =
           typeof a.priority === "number"
@@ -358,7 +354,6 @@ export const QueueComponent = {
   },
 
   getPriorityClass(priority) {
-    // Handle both string and number priority values
     const priorityValue =
       typeof priority === "number"
         ? priority === 3
@@ -370,17 +365,16 @@ export const QueueComponent = {
 
     switch (priorityValue) {
       case "emergency":
-        return "status-completed"; // Red/danger color
+        return "status-completed";
       case "urgent":
-        return "status-examining"; // Blue color
+        return "status-examining";
       case "normal":
       default:
-        return "status-waiting"; // Yellow color
+        return "status-waiting";
     }
   },
 
   getPriorityLabel(priority) {
-    // Handle both string and number priority values
     const priorityValue =
       typeof priority === "number"
         ? priority === 3
@@ -451,19 +445,21 @@ export const QueueComponent = {
     this.app = app;
     window.queueComponent = this;
 
-    // Load all required data first
+    // Remove any existing refresh interval
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+    }
+
     await this.loadDoctors();
     await this.loadPatients();
     await this.loadQueues();
 
-    // Then render
     const container = document.getElementById("app-content");
     if (container) {
       container.innerHTML = this.render();
     }
 
     this.setupEventListeners();
-    this.startAutoRefresh();
   },
 
   setupEventListeners() {
@@ -482,38 +478,37 @@ export const QueueComponent = {
   },
 
   async refreshQueue() {
-    // Reload data from API - refresh patients and doctors first
-    await this.loadPatients();
-    await this.loadDoctors();
-    await this.loadQueues();
+    this.app.showLoading();
+    try {
+      await this.loadPatients();
+      await this.loadDoctors();
+      await this.loadQueues();
 
-    const tableBody = document.getElementById("queueTableBody");
-    const queueCount = document.getElementById("queueCount");
+      const tableBody = document.getElementById("queueTableBody");
+      const queueCount = document.getElementById("queueCount");
 
-    if (tableBody) {
-      tableBody.innerHTML = this.renderQueueTable();
+      if (tableBody) {
+        tableBody.innerHTML = this.renderQueueTable();
+      }
+
+      if (queueCount) {
+        queueCount.textContent = `${this.getFilteredQueue().length} antrian`;
+      }
+
+      const stats = this.getQueueStats();
+      const statCards = document.querySelectorAll(".stat-card .stat-number");
+      if (statCards.length >= 4) {
+        statCards[0].textContent = stats.waiting;
+        statCards[1].textContent = stats.examining;
+        statCards[2].textContent = stats.completed;
+        statCards[3].textContent = stats.total;
+      }
+    } catch (error) {
+      console.error("Error refreshing queue:", error);
+      this.app.showNotification("Gagal memperbarui antrian", "error");
+    } finally {
+      this.app.hideLoading();
     }
-
-    if (queueCount) {
-      queueCount.textContent = `${this.getFilteredQueue().length} antrian`;
-    }
-
-    // Update stats
-    const stats = this.getQueueStats();
-    const statCards = document.querySelectorAll(".stat-card .stat-number");
-    if (statCards.length >= 4) {
-      statCards[0].textContent = stats.waiting;
-      statCards[1].textContent = stats.examining;
-      statCards[2].textContent = stats.completed;
-      statCards[3].textContent = stats.total;
-    }
-  },
-
-  startAutoRefresh() {
-    // Auto-refresh every 30 seconds
-    this.refreshInterval = setInterval(() => {
-      this.refreshQueue();
-    }, 30000);
   },
 
   startExamination(queueId) {
@@ -534,7 +529,6 @@ export const QueueComponent = {
       `Mulai pemeriksaan untuk pasien ${queueItem.patientName}?`,
       async () => {
         try {
-          // Update via API
           const token = this.app.currentUser.token;
           const updateData = {
             status: "examining",
@@ -543,11 +537,9 @@ export const QueueComponent = {
 
           await updateQueue(queueId, updateData, token);
 
-          // Update local storage
           queueItem.status = "examining";
           queueItem.examinationStartTime = new Date().toISOString();
 
-          // Update doctor status to busy
           const doctors = Storage.get("doctors") || [];
           const doctorId = queueItem.doctorId || queueItem.doctor_id;
           const doctor = doctors.find(
@@ -591,71 +583,78 @@ export const QueueComponent = {
       return;
     }
 
-    // Show completion form
     this.showCompletionForm(queueItem);
   },
 
   showCompletionForm(queueItem) {
-    const modalContent = `
-            <form id="completionForm">
-                <div class="form-group">
-                    <label class="form-label">Diagnosis</label>
-                    <textarea class="form-textarea" id="diagnosis" placeholder="Masukkan diagnosis..." required></textarea>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Resep/Obat</label>
-                    <textarea class="form-textarea" id="prescription" placeholder="Masukkan resep obat..."></textarea>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Catatan Tambahan</label>
-                    <textarea class="form-textarea" id="notes" placeholder="Catatan tambahan..."></textarea>
-                </div>
-            </form>
-        `;
-
-    // Create custom modal
-    const modalOverlay = document.createElement("div");
-    modalOverlay.className = "modal-overlay";
-    modalOverlay.style.display = "flex";
-    modalOverlay.innerHTML = `
-            <div class="modal">
-                <div class="modal-header">
-                    <h3>Selesaikan Pemeriksaan - ${queueItem.patientName}</h3>
-                    <button class="modal-close" id="customModalClose">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    ${modalContent}
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-success" id="completeBtn">
-                        <i class="fas fa-check"></i>
-                        Selesaikan
-                    </button>
-                    <button class="btn btn-secondary" id="cancelBtn">Batal</button>
+    const modalHtml = `
+            <div class="custom-modal-overlay">
+                <div class="custom-modal">
+                    <div class="custom-modal-header">
+                        <h3>Selesaikan Pemeriksaan - ${queueItem.patientName}</h3>
+                        <button class="custom-modal-close-btn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="custom-modal-body">
+                        <form id="completionForm">
+                            <div class="form-group">
+                                <label class="form-label">Diagnosis</label>
+                                <textarea class="form-textarea" id="diagnosis" placeholder="Masukkan diagnosis..." required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Resep/Obat</label>
+                                <textarea class="form-textarea" id="prescription" placeholder="Masukkan resep obat..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Catatan Tambahan</label>
+                                <textarea class="form-textarea" id="notes" placeholder="Catatan tambahan..."></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="custom-modal-footer">
+                        <button class="btn btn-success" id="completeBtn">
+                            <i class="fas fa-check"></i>
+                            Selesai
+                        </button>
+                        <button class="btn btn-secondary" id="cancelBtn">Batal</button>
+                    </div>
                 </div>
             </div>
         `;
 
-    document.body.appendChild(modalOverlay);
+    document.body.insertAdjacentHTML("beforeend", modalHtml);
 
-    // Event listeners for custom modal
+    const modalOverlay = document.querySelector(".custom-modal-overlay");
+    const closeButton = modalOverlay.querySelector(".custom-modal-close-btn");
+    const cancelButton = modalOverlay.querySelector("#cancelBtn");
+    const completeButton = modalOverlay.querySelector("#completeBtn");
+
+    document.body.classList.add("modal-open");
+
     const closeModal = () => {
-      document.body.removeChild(modalOverlay);
+      if (modalOverlay) {
+        modalOverlay.classList.remove("show");
+        document.body.classList.remove("modal-open");
+        modalOverlay.addEventListener(
+          "transitionend",
+          () => {
+            modalOverlay.remove();
+          },
+          { once: true }
+        );
+      }
     };
 
-    modalOverlay
-      .querySelector("#customModalClose")
-      .addEventListener("click", closeModal);
-    modalOverlay
-      .querySelector("#cancelBtn")
-      .addEventListener("click", closeModal);
+    closeButton.addEventListener("click", closeModal);
+    cancelButton.addEventListener("click", closeModal);
     modalOverlay.addEventListener("click", (e) => {
-      if (e.target === modalOverlay) closeModal();
+      if (e.target === modalOverlay) {
+        closeModal();
+      }
     });
 
-    modalOverlay.querySelector("#completeBtn").addEventListener("click", () => {
+    completeButton.addEventListener("click", () => {
       const diagnosis = document.getElementById("diagnosis").value.trim();
       const prescription = document.getElementById("prescription").value.trim();
       const notes = document.getElementById("notes").value.trim();
@@ -668,33 +667,20 @@ export const QueueComponent = {
       this.finalizeExamination(queueItem, { diagnosis, prescription, notes });
       closeModal();
     });
+
+    setTimeout(() => {
+      modalOverlay.classList.add("show");
+    }, 10);
   },
 
   async finalizeExamination(queueItem, completionData) {
     try {
-      const queue = Storage.get("queue") || [];
-      const queueId = queueItem._id || queueItem.id;
-
-      // Update via API
-      const token = this.app.currentUser.token;
-      const updateData = {
-        status: "completed",
-        completionTime: new Date().toISOString(),
-        diagnosis: completionData.diagnosis,
-        prescription: completionData.prescription,
-        notes: completionData.notes,
-      };
-
-      await updateQueue(queueId, updateData, token);
-
-      // Update local storage
       queueItem.status = "completed";
       queueItem.completionTime = new Date().toISOString();
       queueItem.diagnosis = completionData.diagnosis;
       queueItem.prescription = completionData.prescription;
       queueItem.notes = completionData.notes;
 
-      // Update doctor status back to available
       const doctors = Storage.get("doctors") || [];
       const doctorId = queueItem.doctorId || queueItem.doctor_id;
       const doctor = doctors.find(
@@ -707,18 +693,36 @@ export const QueueComponent = {
         Storage.set("doctors", doctors);
       }
 
-      Storage.set("queue", queue);
+      const currentQueues = Storage.get("queue") || [];
+      const updatedQueues = currentQueues.map((q) =>
+        (q._id || q.id) === (queueItem._id || queueItem.id) ? queueItem : q
+      );
+      Storage.set("queue", updatedQueues);
+
       this.refreshQueue();
+
+      const token = this.app.currentUser.token;
+      const updateData = {
+        status: "completed",
+        completionTime: queueItem.completionTime,
+        diagnosis: completionData.diagnosis,
+        prescription: completionData.prescription,
+        notes: completionData.notes,
+      };
+
+      await updateQueue(queueItem._id || queueItem.id, updateData, token);
 
       this.app.showNotification(
         `Pemeriksaan untuk ${queueItem.patientName} telah selesai`,
         "success"
       );
     } catch (error) {
+      console.error("Failed to finalize examination:", error);
       this.app.showNotification(
         "Gagal menyelesaikan pemeriksaan: " + error.message,
         "error"
       );
+      this.refreshQueue();
     }
   },
 
@@ -735,155 +739,66 @@ export const QueueComponent = {
       return;
     }
 
-    // Create custom modal for detailed HTML content
     const modalOverlay = document.createElement("div");
-    modalOverlay.className = "modal-overlay";
-    modalOverlay.style.display = "flex";
-    modalOverlay.innerHTML = `
-            <div class="modal">
-                <div class="modal-header">
-                    <h3>Detail Pemeriksaan</h3>
-                    <button class="modal-close" id="detailModalClose">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <div class="patient-info">
-                        <div class="info-item">
-                            <div class="info-label">Pasien</div>
-                            <div class="info-value">${
-                              queueItem.patientName
-                            }</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Dokter</div>
-                            <div class="info-value">Dr. ${
-                              queueItem.doctorName
-                            } - ${queueItem.doctorSpecialty}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Waktu Antrian</div>
-                            <div class="info-value">${new Date(
-                              queueItem.timestamp
-                            ).toLocaleString("id-ID")}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Prioritas</div>
-                            <div class="info-value">
-                                <span class="status-badge ${this.getPriorityClass(
-                                  queueItem.priority
-                                )}">
-                                    ${this.getPriorityLabel(queueItem.priority)}
-                                </span>
-                            </div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Status</div>
-                            <div class="info-value">
-                                <span class="status-badge status-${
-                                  queueItem.status
-                                }">
-                                    ${this.getStatusLabel(queueItem.status)}
-                                </span>
-                            </div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Keluhan</div>
-                            <div class="info-value">${queueItem.complaint}</div>
-                        </div>
-                        ${
-                          queueItem.examinationStartTime
-                            ? `
-                            <div class="info-item">
-                                <div class="info-label">Waktu Mulai Pemeriksaan</div>
-                                <div class="info-value">${new Date(
-                                  queueItem.examinationStartTime
-                                ).toLocaleString("id-ID")}</div>
-                            </div>
-                        `
-                            : ""
-                        }
-                        ${
-                          queueItem.diagnosis
-                            ? `
-                            <div class="info-item">
-                                <div class="info-label">Diagnosis</div>
-                                <div class="info-value">${queueItem.diagnosis}</div>
-                            </div>
-                        `
-                            : ""
-                        }
-                        ${
-                          queueItem.prescription
-                            ? `
-                            <div class="info-item">
-                                <div class="info-label">Resep</div>
-                                <div class="info-value">${queueItem.prescription}</div>
-                            </div>
-                        `
-                            : ""
-                        }
-                        ${
-                          queueItem.notes
-                            ? `
-                            <div class="info-item">
-                                <div class="info-label">Catatan</div>
-                                <div class="info-value">${queueItem.notes}</div>
-                            </div>
-                        `
-                            : ""
-                        }
-                        ${
-                          queueItem.completionTime
-                            ? `
-                            <div class="info-item">
-                                <div class="info-label">Waktu Selesai</div>
-                                <div class="info-value">${new Date(
-                                  queueItem.completionTime
-                                ).toLocaleString("id-ID")}</div>
-                            </div>
-                        `
-                            : ""
-                        }
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" id="detailCloseBtn">
-                        <i class="fas fa-times"></i>
-                        Tutup
-                    </button>
-                    ${
-                      queueItem.status === "completed"
-                        ? ""
-                        : `
-                        <button class="btn btn-primary" onclick="hospitalApp.router.navigate('patient-record', { patientId: '${
-                          queueItem.patientId || queueItem.patient_id
-                        }' })">
-                            <i class="fas fa-user"></i>
-                            Lihat Rekam Medis
-                        </button>
-                    `
-                    }
-                </div>
-            </div>
-        `;
+    modalOverlay.className = "custom-modal-overlay show";
+    modalOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    `;
+
+    const modalContent = document.createElement("div");
+    modalContent.className = "custom-modal";
+    modalContent.style.cssText = `
+        background: white;
+        padding: 2rem;
+        border-radius: 8px;
+        max-width: 600px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+    `;
+
+    modalOverlay.appendChild(modalContent);
 
     document.body.appendChild(modalOverlay);
+    document.body.style.overflow = "hidden";
 
-    // Event listeners for custom modal
-    const closeModal = () => {
-      document.body.removeChild(modalOverlay);
-    };
-
-    modalOverlay
-      .querySelector("#detailModalClose")
-      .addEventListener("click", closeModal);
-    modalOverlay
-      .querySelector("#detailCloseBtn")
-      .addEventListener("click", closeModal);
     modalOverlay.addEventListener("click", (e) => {
-      if (e.target === modalOverlay) closeModal();
+      if (e.target === modalOverlay) {
+        document.body.removeChild(modalOverlay);
+        document.body.style.overflow = "";
+      }
     });
+
+    modalContent.innerHTML = `
+        <div class="custom-modal-header">
+            <h3>Detail Pemeriksaan</h3>
+            <button class="custom-modal-close-btn">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="custom-modal-body">
+            <!-- Your existing modal content here -->
+        </div>
+        <div class="custom-modal-footer">
+            <!-- Your existing footer buttons here -->
+        </div>
+    `;
+
+    modalContent
+      .querySelector(".custom-modal-close-btn")
+      .addEventListener("click", () => {
+        document.body.removeChild(modalOverlay);
+        document.body.style.overflow = "";
+      });
   },
 
   destroy() {
