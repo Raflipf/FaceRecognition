@@ -1,21 +1,45 @@
-// Queue Component
 import { Storage } from "../utils/storage.js";
-import { getDoctors, getQueues, addQueue, updateQueue } from "../../../js/utils/api.js";
+import {
+  getDoctors,
+  getQueues,
+  getPatients, // Add this import
+  addQueue,
+  updateQueue,
+} from "../../../js/utils/api.js";
 
 export const QueueComponent = {
   doctors: [],
+  patients: [], // Add this property
   queues: [],
+
+  async loadPatients() {
+    try {
+      const token = this.app.currentUser.token;
+      const patients = await getPatients(token);
+      console.log("Loaded patients:", patients); // Tambahkan ini
+      this.patients = patients;
+      Storage.set("patients", patients);
+      return patients;
+    } catch (error) {
+      console.error("Failed to load patients:", error); // Tambahkan error detail
+      this.patients = Storage.get("patients") || [];
+      return this.patients;
+    }
+  },
 
   async loadDoctors() {
     try {
       const token = this.app.currentUser.token;
       this.doctors = await getDoctors(token);
+      console.log("Loaded doctors:", this.doctors); // Tambahkan ini
+      Storage.set("doctors", this.doctors);
     } catch (error) {
+      console.error("Failed to load doctors:", error); // Tambahkan error detail
       this.app.showNotification(
         "Gagal mengambil data dokter: " + error.message,
         "error"
       );
-      this.doctors = [];
+      this.doctors = Storage.get("doctors") || [];
     }
   },
 
@@ -23,13 +47,74 @@ export const QueueComponent = {
     try {
       const token = this.app.currentUser.token;
       this.queues = await getQueues(token);
+
+      const processedQueues = await this.processQueueData(this.queues);
+
+      Storage.set("queue", processedQueues);
     } catch (error) {
       this.app.showNotification(
         "Gagal mengambil data antrian: " + error.message,
         "error"
       );
-      this.queues = [];
+      this.queues = Storage.get("queue") || [];
     }
+  },
+
+  async processQueueData(queues) {
+    // Ensure we have fresh patient and doctor data
+    const patients =
+      this.patients.length > 0 ? this.patients : await this.loadPatients();
+    const doctors =
+      this.doctors.length > 0 ? this.doctors : await this.loadDoctors();
+
+    console.log("Processing queues:", queues.length);
+    console.log("Available patients:", patients.length);
+    console.log("Available doctors:", doctors.length);
+
+    return queues.map((queue) => {
+      // Convert IDs to string for comparison
+      const queuePatientId = queue.patient_id?.toString();
+      const queueDoctorId = queue.doctor_id?.toString();
+
+      // Find patient - handle both _id and id fields
+      const patient = patients.find((p) => {
+        const patientId = (p._id || p.id)?.toString();
+        return patientId && patientId === queuePatientId;
+      });
+
+      // Find doctor - handle both _id and id fields
+      const doctor = doctors.find((d) => {
+        const doctorId = (d._id || d.id)?.toString();
+        return doctorId && doctorId === queueDoctorId;
+      });
+
+      if (!patient) {
+        console.warn("Patient not found for queue:", queue.patient_id);
+        console.warn(
+          "Available patient IDs:",
+          patients.map((p) => (p._id || p.id)?.toString())
+        );
+      }
+      if (!doctor) {
+        console.warn("Doctor not found for queue:", queue.doctor_id);
+        console.warn(
+          "Available doctor IDs:",
+          doctors.map((d) => (d._id || d.id)?.toString())
+        );
+      }
+
+      return {
+        ...queue,
+        id: queue._id || queue.id,
+        patientId: queue.patient_id,
+        doctorId: queue.doctor_id,
+        patientName: patient ? patient.name : "Pasien Tidak Dikenal",
+        doctorName: doctor ? doctor.name : "Dokter Tidak Dikenal",
+        doctorSpecialty: doctor
+          ? doctor.specialty
+          : "Spesialisasi Tidak Dikenal",
+      };
+    });
   },
 
   render() {
@@ -162,8 +247,10 @@ export const QueueComponent = {
 
     return queue
       .filter((q) => {
+        // Handle both doctorId and doctor_id fields
+        const queueDoctorId = q.doctorId || q.doctor_id;
         const matchDoctor =
-          !doctorFilter || q.doctorId.toString() === doctorFilter;
+          !doctorFilter || queueDoctorId?.toString() === doctorFilter;
         const matchStatus = !statusFilter || q.status === statusFilter;
         const matchDate =
           !dateFilter ||
@@ -175,8 +262,25 @@ export const QueueComponent = {
       .sort((a, b) => {
         // Sort by priority first, then by timestamp
         const priorityOrder = { emergency: 3, urgent: 2, normal: 1 };
+        const aPriority =
+          typeof a.priority === "number"
+            ? a.priority === 3
+              ? "emergency"
+              : a.priority === 2
+              ? "urgent"
+              : "normal"
+            : a.priority;
+        const bPriority =
+          typeof b.priority === "number"
+            ? b.priority === 3
+              ? "emergency"
+              : b.priority === 2
+              ? "urgent"
+              : "normal"
+            : b.priority;
+
         const priorityDiff =
-          (priorityOrder[b.priority] || 1) - (priorityOrder[a.priority] || 1);
+          (priorityOrder[bPriority] || 1) - (priorityOrder[aPriority] || 1);
         if (priorityDiff !== 0) return priorityDiff;
 
         return new Date(a.timestamp) - new Date(b.timestamp);
@@ -187,7 +291,9 @@ export const QueueComponent = {
     return this.doctors
       .map(
         (doctor) => `
-            <option value="${doctor.id}">Dr. ${doctor.name} - ${doctor.specialty}</option>
+            <option value="${doctor._id || doctor.id}">Dr. ${doctor.name} - ${
+          doctor.specialty
+        }</option>
         `
       )
       .join("");
@@ -267,7 +373,17 @@ export const QueueComponent = {
   },
 
   getPriorityClass(priority) {
-    switch (priority) {
+    // Handle both string and number priority values
+    const priorityValue =
+      typeof priority === "number"
+        ? priority === 3
+          ? "emergency"
+          : priority === 2
+          ? "urgent"
+          : "normal"
+        : priority;
+
+    switch (priorityValue) {
       case "emergency":
         return "status-completed"; // Red/danger color
       case "urgent":
@@ -279,7 +395,17 @@ export const QueueComponent = {
   },
 
   getPriorityLabel(priority) {
-    switch (priority) {
+    // Handle both string and number priority values
+    const priorityValue =
+      typeof priority === "number"
+        ? priority === 3
+          ? "emergency"
+          : priority === 2
+          ? "urgent"
+          : "normal"
+        : priority;
+
+    switch (priorityValue) {
       case "emergency":
         return "Darurat";
       case "urgent":
@@ -304,11 +430,13 @@ export const QueueComponent = {
   },
 
   renderActionButtons(item) {
+    const itemId = item._id || item.id;
+
     switch (item.status) {
       case "waiting":
         return `
                     <button class="btn btn-primary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" 
-                            onclick="queueComponent.startExamination(${item.id})">
+                            onclick="queueComponent.startExamination('${itemId}')">
                         <i class="fas fa-play"></i>
                         Mulai
                     </button>
@@ -316,7 +444,7 @@ export const QueueComponent = {
       case "examining":
         return `
                     <button class="btn btn-success" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" 
-                            onclick="queueComponent.completeExamination(${item.id})">
+                            onclick="queueComponent.completeExamination('${itemId}')">
                         <i class="fas fa-check"></i>
                         Selesai
                     </button>
@@ -324,7 +452,7 @@ export const QueueComponent = {
       case "completed":
         return `
                     <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" 
-                            onclick="queueComponent.viewDetails(${item.id})">
+                            onclick="queueComponent.viewDetails('${itemId}')">
                         <i class="fas fa-eye"></i>
                         Detail
                     </button>
@@ -336,11 +464,23 @@ export const QueueComponent = {
 
   async init(app) {
     this.app = app;
-    window.queueComponent = this; // Make available globally for onclick handlers
+    window.queueComponent = this;
 
+    // Load data
     await this.loadDoctors();
+    await this.loadPatients();
+    await this.loadQueues();
 
+    // Render dulu ke DOM (pastikan ada fungsi render ke container ya)
+    const container = document.getElementById("app-content"); // atau apapun container lo
+    if (container) {
+      container.innerHTML = this.render();
+    }
+
+    // Baru pasang event listener
     this.setupEventListeners();
+
+    // Mulai auto refresh
     this.startAutoRefresh();
   },
 
@@ -359,7 +499,12 @@ export const QueueComponent = {
     });
   },
 
-  refreshQueue() {
+  async refreshQueue() {
+    // Reload data from API - refresh patients and doctors first
+    await this.loadPatients();
+    await this.loadDoctors();
+    await this.loadQueues();
+
     const tableBody = document.getElementById("queueTableBody");
     const queueCount = document.getElementById("queueCount");
 
@@ -391,7 +536,11 @@ export const QueueComponent = {
 
   startExamination(queueId) {
     const queue = Storage.get("queue") || [];
-    const queueItem = queue.find((q) => q.id === queueId);
+    const queueItem = queue.find(
+      (q) =>
+        (q._id && q._id.toString() === queueId.toString()) ||
+        (q.id && q.id.toString() === queueId.toString())
+    );
 
     if (!queueItem) {
       this.app.showNotification("Item antrian tidak ditemukan", "error");
@@ -401,26 +550,47 @@ export const QueueComponent = {
     this.app.showModal(
       "Konfirmasi",
       `Mulai pemeriksaan untuk pasien ${queueItem.patientName}?`,
-      () => {
-        // Update status to examining
-        queueItem.status = "examining";
-        queueItem.examinationStartTime = new Date().toISOString();
+      async () => {
+        try {
+          // Update via API
+          const token = this.app.currentUser.token;
+          const updateData = {
+            status: "examining",
+            examinationStartTime: new Date().toISOString(),
+          };
 
-        // Update doctor status to busy
-        const doctors = Storage.get("doctors") || [];
-        const doctor = doctors.find((d) => d.id === queueItem.doctorId);
-        if (doctor) {
-          doctor.status = "busy";
-          Storage.set("doctors", doctors);
+          await updateQueue(queueId, updateData, token);
+
+          // Update local storage
+          queueItem.status = "examining";
+          queueItem.examinationStartTime = new Date().toISOString();
+
+          // Update doctor status to busy
+          const doctors = Storage.get("doctors") || [];
+          const doctorId = queueItem.doctorId || queueItem.doctor_id;
+          const doctor = doctors.find(
+            (d) =>
+              (d._id && d._id.toString() === doctorId?.toString()) ||
+              (d.id && d.id.toString() === doctorId?.toString())
+          );
+          if (doctor) {
+            doctor.status = "busy";
+            Storage.set("doctors", doctors);
+          }
+
+          Storage.set("queue", queue);
+          this.refreshQueue();
+
+          this.app.showNotification(
+            `Pemeriksaan untuk ${queueItem.patientName} telah dimulai`,
+            "success"
+          );
+        } catch (error) {
+          this.app.showNotification(
+            "Gagal memulai pemeriksaan: " + error.message,
+            "error"
+          );
         }
-
-        Storage.set("queue", queue);
-        this.refreshQueue();
-
-        this.app.showNotification(
-          `Pemeriksaan untuk ${queueItem.patientName} telah dimulai`,
-          "success"
-        );
       },
       true
     );
@@ -428,7 +598,11 @@ export const QueueComponent = {
 
   completeExamination(queueId) {
     const queue = Storage.get("queue") || [];
-    const queueItem = queue.find((q) => q.id === queueId);
+    const queueItem = queue.find(
+      (q) =>
+        (q._id && q._id.toString() === queueId.toString()) ||
+        (q.id && q.id.toString() === queueId.toString())
+    );
 
     if (!queueItem) {
       this.app.showNotification("Item antrian tidak ditemukan", "error");
@@ -514,36 +688,65 @@ export const QueueComponent = {
     });
   },
 
-  finalizeExamination(queueItem, completionData) {
-    const queue = Storage.get("queue") || [];
+  async finalizeExamination(queueItem, completionData) {
+    try {
+      const queue = Storage.get("queue") || [];
+      const queueId = queueItem._id || queueItem.id;
 
-    // Update queue item
-    queueItem.status = "completed";
-    queueItem.completionTime = new Date().toISOString();
-    queueItem.diagnosis = completionData.diagnosis;
-    queueItem.prescription = completionData.prescription;
-    queueItem.notes = completionData.notes;
+      // Update via API
+      const token = this.app.currentUser.token;
+      const updateData = {
+        status: "completed",
+        completionTime: new Date().toISOString(),
+        diagnosis: completionData.diagnosis,
+        prescription: completionData.prescription,
+        notes: completionData.notes,
+      };
 
-    // Update doctor status back to available
-    const doctors = Storage.get("doctors") || [];
-    const doctor = doctors.find((d) => d.id === queueItem.doctorId);
-    if (doctor) {
-      doctor.status = "available";
-      Storage.set("doctors", doctors);
+      await updateQueue(queueId, updateData, token);
+
+      // Update local storage
+      queueItem.status = "completed";
+      queueItem.completionTime = new Date().toISOString();
+      queueItem.diagnosis = completionData.diagnosis;
+      queueItem.prescription = completionData.prescription;
+      queueItem.notes = completionData.notes;
+
+      // Update doctor status back to available
+      const doctors = Storage.get("doctors") || [];
+      const doctorId = queueItem.doctorId || queueItem.doctor_id;
+      const doctor = doctors.find(
+        (d) =>
+          (d._id && d._id.toString() === doctorId?.toString()) ||
+          (d.id && d.id.toString() === doctorId?.toString())
+      );
+      if (doctor) {
+        doctor.status = "available";
+        Storage.set("doctors", doctors);
+      }
+
+      Storage.set("queue", queue);
+      this.refreshQueue();
+
+      this.app.showNotification(
+        `Pemeriksaan untuk ${queueItem.patientName} telah selesai`,
+        "success"
+      );
+    } catch (error) {
+      this.app.showNotification(
+        "Gagal menyelesaikan pemeriksaan: " + error.message,
+        "error"
+      );
     }
-
-    Storage.set("queue", queue);
-    this.refreshQueue();
-
-    this.app.showNotification(
-      `Pemeriksaan untuk ${queueItem.patientName} telah selesai`,
-      "success"
-    );
   },
 
   viewDetails(queueId) {
     const queue = Storage.get("queue") || [];
-    const queueItem = queue.find((q) => q.id === queueId);
+    const queueItem = queue.find(
+      (q) =>
+        (q._id && q._id.toString() === queueId.toString()) ||
+        (q.id && q.id.toString() === queueId.toString())
+    );
 
     if (!queueItem) {
       this.app.showNotification("Detail tidak ditemukan", "error");
@@ -671,7 +874,9 @@ export const QueueComponent = {
                       queueItem.status === "completed"
                         ? ""
                         : `
-                        <button class="btn btn-primary" onclick="hospitalApp.router.navigate('patient-record', { patientId: ${queueItem.patientId} })">
+                        <button class="btn btn-primary" onclick="hospitalApp.router.navigate('patient-record', { patientId: '${
+                          queueItem.patientId || queueItem.patient_id
+                        }' })">
                             <i class="fas fa-user"></i>
                             Lihat Rekam Medis
                         </button>

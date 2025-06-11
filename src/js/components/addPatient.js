@@ -429,12 +429,30 @@ export const AddPatientComponent = {
       return;
     }
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const maxSize = 512;
+    let width = video.videoWidth;
+    let height = video.videoHeight;
 
-    const photoData = canvas.toDataURL("image/jpeg", 0.8);
+    // Proses resize biar tetap aspect ratio
+    if (width > height) {
+      if (width > maxSize) {
+        height *= maxSize / width;
+        width = maxSize;
+      }
+    } else {
+      if (height > maxSize) {
+        width *= maxSize / height;
+        height = maxSize;
+      }
+    }
+
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, width, height);
+
+    const photoData = canvas.toDataURL("image/jpeg", 0.7);
+
     this.capturedPhotos.push(photoData);
 
     this.capturedPhotoData = photoData;
