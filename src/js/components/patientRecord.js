@@ -230,20 +230,12 @@ export const PatientRecordComponent = {
     const history = queue
       .filter((q) => {
         const queuePatientId = q.patient_id
-          ? q.patient_id.toString()
+          ? (q.patient_id._id || q.patient_id).toString()
           : q.patientId
           ? q.patientId.toString()
           : null;
         const isCompleted = q.status === "completed";
         const matchesPatient = queuePatientId === searchId;
-
-        console.log("Queue entry:", {
-          queuePatientId,
-          searchId,
-          matchesPatient,
-          isCompleted,
-          status: q.status,
-        });
 
         return matchesPatient && isCompleted;
       })
