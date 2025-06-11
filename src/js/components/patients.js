@@ -37,7 +37,6 @@ export const PatientsComponent = {
                                 <option value="">Semua</option>
                                 <option value="male">Laki-laki</option>
                                 <option value="female">Perempuan</option>
-                                <option value="other">Lainnya</option>
                             </select>
                         </div>
                         <div class="form-group mb-0">
