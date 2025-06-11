@@ -429,30 +429,35 @@ export const AddPatientComponent = {
       return;
     }
 
-    const maxSize = 512;
-    let width = video.videoWidth;
-    let height = video.videoHeight;
+    // Resize ke 160x160
+    const targetSize = 160;
+    canvas.width = targetSize;
+    canvas.height = targetSize;
+    const ctx = canvas.getContext("2d");
 
-    // Proses resize biar tetap aspect ratio
-    if (width > height) {
-      if (width > maxSize) {
-        height *= maxSize / width;
-        width = maxSize;
-      }
+    // Biar gambar tetap center & crop proporsional ke 160x160
+    const videoAspect = video.videoWidth / video.videoHeight;
+    const targetAspect = 1; // 160/160
+
+    let sx, sy, sWidth, sHeight;
+    if (videoAspect > targetAspect) {
+      // video lebih lebar dari 1:1
+      sHeight = video.videoHeight;
+      sWidth = sHeight * targetAspect;
+      sx = (video.videoWidth - sWidth) / 2;
+      sy = 0;
     } else {
-      if (height > maxSize) {
-        width *= maxSize / height;
-        height = maxSize;
-      }
+      // video lebih tinggi dari 1:1
+      sWidth = video.videoWidth;
+      sHeight = sWidth / targetAspect;
+      sx = 0;
+      sy = (video.videoHeight - sHeight) / 2;
     }
 
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(video, 0, 0, width, height);
+    ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, targetSize, targetSize);
 
-    const photoData = canvas.toDataURL("image/jpeg", 0.7);
-
+    // Convert ke base64, kualitas bisa diatur
+    const photoData = canvas.toDataURL("image/jpeg", 0.8);
     this.capturedPhotos.push(photoData);
 
     this.capturedPhotoData = photoData;
@@ -475,7 +480,7 @@ export const AddPatientComponent = {
 
     document.getElementById("retakePhotoBtn").style.display = "inline-flex";
   },
-
+  
   updateCaptureButton() {
     const captureBtn = document.getElementById("photoCapture");
     const count = this.capturedPhotos ? this.capturedPhotos.length : 0;
