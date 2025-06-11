@@ -39,7 +39,7 @@ export const LoginComponent = {
                     </form>
                     <div class="mt-3 text-center">
                         <small style="color: #64748b;">
-                            Demo: username: <strong>receptionist</strong>, password: <strong>hospital123</strong>
+                            Kredensial: username: <strong>admin1</strong>, password: <strong>admin1</strong>
                         </small>
                     </div>
                 </div>
