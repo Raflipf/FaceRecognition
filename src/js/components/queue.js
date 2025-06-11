@@ -94,7 +94,7 @@ export const QueueComponent = {
         patientId: queue.patient_id?._id || queue.patient_id,
         doctorId: queue.doctor_id?._id || queue.doctor_id,
         patientName: patient ? patient.name : "Pasien Tidak Dikenal",
-        doctorName: doctor ? `Dr. ${doctor.name}` : "Dokter Tidak Dikenal",
+        doctorName: doctor ? `${doctor.name}` : "Dokter Tidak Dikenal",
         doctorSpecialty: doctor
           ? doctor.specialty
           : "Spesialisasi Tidak Dikenal",
