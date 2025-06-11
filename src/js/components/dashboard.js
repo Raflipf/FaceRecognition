@@ -17,7 +17,8 @@ export const DashboardComponent = {
       this.users = await getUsers(token);
       this.patients = await getPatients(token);
       this.doctors = await getDoctors(token);
-      this.queues = await getQueues(token);
+      const queues = await getQueues(token);
+      this.queues = await this.processQueueData(queues);
     } catch (error) {
       console.error("Gagal mengambil data dashboard:", error);
       this.users = [];
@@ -134,6 +135,37 @@ export const DashboardComponent = {
     };
   },
 
+  async processQueueData(queues) {
+    return queues.map((queue) => {
+      const patient =
+        queue.patient_id && typeof queue.patient_id === "object"
+          ? queue.patient_id
+          : this.patients.find(
+              (p) =>
+                (p._id || p.id)?.toString() === queue.patient_id?.toString()
+            );
+
+      const doctor =
+        queue.doctor_id && typeof queue.doctor_id === "object"
+          ? queue.doctor_id
+          : this.doctors.find(
+              (d) => (d._id || d.id)?.toString() === queue.doctor_id?.toString()
+            );
+
+      return {
+        ...queue,
+        id: queue._id || queue.id,
+        patientId: queue.patient_id?._id || queue.patient_id,
+        doctorId: queue.doctor_id?._id || queue.doctor_id,
+        patientName: patient ? patient.name : "Pasien Tidak Dikenal",
+        doctorName: doctor ? doctor.name : "Dokter Tidak Dikenal",
+        doctorSpecialty: doctor
+          ? doctor.specialty
+          : "Spesialisasi Tidak Dikenal",
+      };
+    });
+  },
+
   renderRecentQueue() {
     const recentQueue = this.queues
       .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
@@ -146,31 +178,33 @@ export const DashboardComponent = {
     return recentQueue
       .map(
         (item) => `
-        <div class="history-item" style="margin-bottom: 1rem;">
-            <div class="history-date">${new Date(item.timestamp).toLocaleString(
-              "id-ID"
-            )}</div>
-            <div class="history-doctor">${item.patientName}</div>
-            <div class="history-complaint">
-                Dr. ${item.doctorName} - 
-                <span class="status-badge status-${
-                  item.status === "waiting"
-                    ? "waiting"
-                    : item.status === "examining"
-                    ? "examining"
-                    : "completed"
-                }">
-                    ${
-                      item.status === "waiting"
-                        ? "Menunggu"
-                        : item.status === "examining"
-                        ? "Diperiksa"
-                        : "Selesai"
-                    }
-                </span>
-            </div>
-        </div>
-    `
+      <div class="history-item" style="margin-bottom: 1rem;">
+          <div class="history-date">${new Date(item.timestamp).toLocaleString(
+            "id-ID"
+          )}</div>
+          <div class="history-doctor">${
+            item.patientName || "Pasien Tidak Dikenal"
+          }</div>
+          <div class="history-complaint">
+              Dr. ${item.doctorName || "Dokter Tidak Dikenal"} - 
+              <span class="status-badge status-${
+                item.status === "waiting"
+                  ? "waiting"
+                  : item.status === "examining"
+                  ? "examining"
+                  : "completed"
+              }">
+                  ${
+                    item.status === "waiting"
+                      ? "Menunggu"
+                      : item.status === "examining"
+                      ? "Diperiksa"
+                      : "Selesai"
+                  }
+              </span>
+          </div>
+      </div>
+  `
       )
       .join("");
   },
@@ -178,11 +212,16 @@ export const DashboardComponent = {
   renderDoctorStatus() {
     return this.doctors
       .map((doctor) => {
+        const doctorId = doctor._id || doctor.id;
         const doctorQueue = this.queues.filter(
-          (q) => q.doctorId === doctor.id && q.status !== "completed"
+          (q) =>
+            (q.doctorId === doctorId || q.doctor_id === doctorId) &&
+            q.status !== "completed"
         );
         const currentPatient = this.queues.find(
-          (q) => q.doctorId === doctor.id && q.status === "examining"
+          (q) =>
+            (q.doctorId === doctorId || q.doctor_id === doctorId) &&
+            q.status === "examining"
         );
 
         return `
@@ -205,7 +244,9 @@ export const DashboardComponent = {
                   currentPatient
                     ? `
                     <div style="margin-top: 0.5rem; font-size: 0.875rem; color: #3b82f6;">
-                        Memeriksa: ${currentPatient.patientName}
+                        Memeriksa: ${
+                          currentPatient.patientName || "Pasien Tidak Dikenal"
+                        }
                     </div>
                 `
                     : ""
@@ -220,20 +261,6 @@ export const DashboardComponent = {
     this.app = app;
     const token = this.app.currentUser.token;
     await this.fetchData(token);
-
-    // Auto-refresh dashboard every 30 seconds
-    this.refreshInterval = setInterval(async () => {
-      await this.fetchData(token);
-      const recentQueueEl = document.getElementById("recentQueue");
-      const doctorStatusEl = document.getElementById("doctorStatus");
-
-      if (recentQueueEl) {
-        recentQueueEl.innerHTML = this.renderRecentQueue();
-      }
-      if (doctorStatusEl) {
-        doctorStatusEl.innerHTML = this.renderDoctorStatus();
-      }
-    }, 30000);
   },
 
   destroy() {
