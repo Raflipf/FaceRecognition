@@ -445,21 +445,32 @@ export const QueueComponent = {
     this.app = app;
     window.queueComponent = this;
 
+    // Tampilkan loading indicator
+    this.app.showLoading();
+
     // Remove any existing refresh interval
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval);
     }
 
-    await this.loadDoctors();
-    await this.loadPatients();
-    await this.loadQueues();
+    try {
+      await this.loadDoctors();
+      await this.loadPatients();
+      await this.loadQueues();
 
-    const container = document.getElementById("app-content");
-    if (container) {
-      container.innerHTML = this.render();
+      const container = document.getElementById("app-content");
+      if (container) {
+        container.innerHTML = this.render();
+      }
+
+      this.setupEventListeners();
+    } catch (error) {
+      console.error("Error initializing queue:", error);
+      this.app.showNotification("Gagal memuat data antrian", "error");
+    } finally {
+      // Sembunyikan loading indicator setelah selesai atau error
+      this.app.hideLoading();
     }
-
-    this.setupEventListeners();
   },
 
   setupEventListeners() {
