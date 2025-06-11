@@ -750,66 +750,120 @@ export const QueueComponent = {
       return;
     }
 
-    const modalOverlay = document.createElement("div");
-    modalOverlay.className = "custom-modal-overlay show";
-    modalOverlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: rgba(0, 0, 0, 0.5);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
+    const modalHtml = `
+      <div class="custom-modal-overlay show">
+        <div class="custom-modal">
+          <div class="custom-modal-header">
+            <h3>Detail Pemeriksaan - ${queueItem.patientName}</h3>
+            <button class="custom-modal-close-btn">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="custom-modal-body">
+            <div class="detail-section">
+              <h4>Informasi Pasien</h4>
+              <div class="detail-row">
+                <span class="detail-label">Nama Pasien:</span>
+                <span class="detail-value">${queueItem.patientName}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Dokter:</span>
+                <span class="detail-value">Dr. ${queueItem.doctorName} (${
+                    queueItem.doctorSpecialty
+                  })</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Tanggal:</span>
+                <span class="detail-value">${new Date(
+                  queueItem.timestamp
+                ).toLocaleDateString("id-ID")}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Keluhan:</span>
+                <span class="detail-value">${queueItem.complaint || "-"}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Prioritas:</span>
+                <span class="detail-value">${this.getPriorityLabel(
+                  queueItem.priority
+                )}</span>
+              </div>
+            </div>
+  
+            <div class="detail-section">
+              <h4>Hasil Pemeriksaan</h4>
+              <div class="detail-row">
+                <span class="detail-label">Diagnosis:</span>
+                <span class="detail-value">${queueItem.diagnosis || "-"}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Resep Obat:</span>
+                <span class="detail-value">${
+                  queueItem.prescription || "-"
+                }</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Catatan:</span>
+                <span class="detail-value">${queueItem.notes || "-"}</span>
+              </div>
+            </div>
+  
+            <div class="detail-section">
+              <h4>Waktu Pemeriksaan</h4>
+              <div class="detail-row">
+                <span class="detail-label">Mulai:</span>
+                <span class="detail-value">${
+                  queueItem.examinationStartTime
+                    ? new Date(queueItem.examinationStartTime).toLocaleString(
+                        "id-ID"
+                      )
+                    : "-"
+                }</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Selesai:</span>
+                <span class="detail-value">${
+                  queueItem.completionTime
+                    ? new Date(queueItem.completionTime).toLocaleString("id-ID")
+                    : "-"
+                }</span>
+              </div>
+            </div>
+          </div>
+          <div class="custom-modal-footer">
+            <button class="btn btn-secondary" id="closeDetailBtn">Tutup</button>
+          </div>
+        </div>
+      </div>
     `;
 
-    const modalContent = document.createElement("div");
-    modalContent.className = "custom-modal";
-    modalContent.style.cssText = `
-        background: white;
-        padding: 2rem;
-        border-radius: 8px;
-        max-width: 600px;
-        width: 90%;
-        max-height: 90vh;
-        overflow-y: auto;
-    `;
+    const existingModal = document.querySelector(".custom-modal-overlay");
+    if (existingModal) {
+      existingModal.remove();
+    }
 
-    modalOverlay.appendChild(modalContent);
+    document.body.insertAdjacentHTML("beforeend", modalHtml);
+    document.body.classList.add("modal-open");
 
-    document.body.appendChild(modalOverlay);
-    document.body.style.overflow = "hidden";
+    const closeBtn = document.querySelector(".custom-modal-close-btn");
+    const closeDetailBtn = document.getElementById("closeDetailBtn");
+    const modalOverlay = document.querySelector(".custom-modal-overlay");
 
+    const closeModal = () => {
+      modalOverlay.classList.remove("show");
+      document.body.classList.remove("modal-open");
+      setTimeout(() => {
+        modalOverlay.remove();
+      }, 300);
+    };
+
+    closeBtn.addEventListener("click", closeModal);
+    closeDetailBtn.addEventListener("click", closeModal);
     modalOverlay.addEventListener("click", (e) => {
       if (e.target === modalOverlay) {
-        document.body.removeChild(modalOverlay);
-        document.body.style.overflow = "";
+        closeModal();
       }
     });
-
-    modalContent.innerHTML = `
-        <div class="custom-modal-header">
-            <h3>Detail Pemeriksaan</h3>
-            <button class="custom-modal-close-btn">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="custom-modal-body">
-            <!-- Your existing modal content here -->
-        </div>
-        <div class="custom-modal-footer">
-            <!-- Your existing footer buttons here -->
-        </div>
-    `;
-
-    modalContent
-      .querySelector(".custom-modal-close-btn")
-      .addEventListener("click", () => {
-        document.body.removeChild(modalOverlay);
-        document.body.style.overflow = "";
-      });
   },
 
   destroy() {
