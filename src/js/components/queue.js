@@ -58,6 +58,18 @@ export const QueueComponent = {
     }
   },
 
+  formatDateToInput(date) {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  },
+
+  formatDateToId(date) {
+    return new Date(date).toLocaleDateString("id-ID");
+  },
+
   async addQueue(patientId, doctorId, complaint, priority) {
     try {
       this.app.showLoading();
@@ -161,6 +173,10 @@ export const QueueComponent = {
     });
   },
 
+  getCurrentDate() {
+    return this.formatDateToInput(new Date());
+  },  
+
   render() {
     const stats = this.getQueueStats();
 
@@ -226,10 +242,8 @@ export const QueueComponent = {
                         </div>
                         
                         <div class="form-group mb-0">
-                            <label class="form-label" for="dateFilter">Filter Tanggal</label>
-                            <input type="date" id="dateFilter" class="form-input" value="${
-                              new Date().toISOString().split("T")[0]
-                            }">
+                          <label class="form-label" for="dateFilter">Filter Tanggal</label>
+                          <input type="date" id="dateFilter" class="form-input" value="${this.getCurrentDate()}">
                         </div>
                     </div>
                 </div>
@@ -285,20 +299,17 @@ export const QueueComponent = {
     const queue = this.queues || [];
     const doctorFilter = document.getElementById("doctorFilter")?.value || "";
     const statusFilter = document.getElementById("statusFilter")?.value || "";
-    const dateFilter =
-      document.getElementById("dateFilter")?.value ||
-      new Date().toISOString().split("T")[0];
+    const dateFilterEl = document.getElementById("dateFilter");
+    const dateFilter = dateFilterEl?.value || this.getCurrentDate();
 
     return queue
       .filter((q) => {
+        const queueDate = this.formatDateToInput(q.timestamp);
         const queueDoctorId = q.doctorId || q.doctor_id;
         const matchDoctor =
           !doctorFilter || queueDoctorId?.toString() === doctorFilter;
         const matchStatus = !statusFilter || q.status === statusFilter;
-        const matchDate =
-          !dateFilter ||
-          new Date(q.timestamp).toDateString() ===
-            new Date(dateFilter).toDateString();
+        const matchDate = !dateFilter || queueDate === dateFilter;
 
         return matchDoctor && matchStatus && matchDate;
       })
@@ -369,10 +380,7 @@ export const QueueComponent = {
                         ${new Date(item.timestamp).toLocaleDateString("id-ID")}
                     </div>
                     <div style="font-size: 0.75rem; color: #64748b;">
-                        ${new Date(item.timestamp).toLocaleTimeString("id-ID", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                      ${this.formatDateToId(item.timestamp)}
                     </div>
                 </td>
                 <td>
