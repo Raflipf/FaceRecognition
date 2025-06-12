@@ -451,6 +451,78 @@ export const PatientRecordComponent = {
     });
   },
 
+  getNextQueueNumberForDoctor(queues, doctorId) {
+    console.log(`Getting next queue number for doctor: ${doctorId}`);
+
+    const today = new Date();
+    const todayString =
+      today.getFullYear() +
+      "-" +
+      String(today.getMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(today.getDate()).padStart(2, "0");
+
+    console.log(`Today's date: ${todayString}`);
+
+    const todayQueuesForDoctor = queues.filter((q) => {
+      if (!q.timestamp) {
+        console.log("Queue entry without timestamp:", q);
+        return false;
+      }
+
+      const queueDate = new Date(q.timestamp);
+      const queueDateString =
+        queueDate.getFullYear() +
+        "-" +
+        String(queueDate.getMonth() + 1).padStart(2, "0") +
+        "-" +
+        String(queueDate.getDate()).padStart(2, "0");
+
+      const doctorIdFromQueue = q.doctor_id
+        ? typeof q.doctor_id === "object"
+          ? q.doctor_id._id || q.doctor_id.id
+          : q.doctor_id
+        : q.doctorId;
+
+      const matchesDoctor =
+        doctorIdFromQueue?.toString() === doctorId.toString();
+      const isToday = queueDateString === todayString;
+
+      const isActiveQueue =
+        q.status !== "completed" && q.status !== "cancelled";
+
+      console.log(
+        `Queue check - Date: ${queueDateString}, Doctor Match: ${matchesDoctor}, Is Today: ${isToday}, Is Active: ${isActiveQueue}, Status: ${q.status}, QueueNumber: ${q.queueNumber}`
+      );
+
+      return isToday && matchesDoctor && isActiveQueue;
+    });
+
+    console.log(
+      `Found ${todayQueuesForDoctor.length} active queues for doctor today`
+    );
+
+    if (todayQueuesForDoctor.length === 0) {
+      console.log("No queues found, starting with queue number 1");
+      return 1;
+    }
+
+    const queueNumbers = todayQueuesForDoctor
+      .map((q) => parseInt(q.queueNumber) || 0)
+      .filter((num) => num > 0);
+
+    console.log("Existing queue numbers:", queueNumbers);
+
+    const maxQueueNumber = Math.max(...queueNumbers, 0);
+    const nextNumber = maxQueueNumber + 1;
+
+    console.log(
+      `Max queue number: ${maxQueueNumber}, Next number: ${nextNumber}`
+    );
+
+    return nextNumber;
+  },
+
   async handleNewVisit() {
     const doctorSelect = document.getElementById("doctorSelect");
     const complaintInput = document.getElementById("complaint");
@@ -487,36 +559,17 @@ export const PatientRecordComponent = {
       this.app.showLoading();
       const token = this.app.currentUser.token;
 
+      console.log("Fetching current queues to determine queue number...");
       const currentQueues = await api.getQueues(token);
+      console.log(`Total queues fetched: ${currentQueues.length}`);
 
-      const getNextQueueNumberForDoctor = (queues, doctorId) => {
-        const today = new Date();
-        const todayFormatted = today.toISOString().split("T")[0];
-
-        const todayQueuesForDoctor = queues.filter((q) => {
-          const queueDate = new Date(q.timestamp).toISOString().split("T")[0];
-          const matchesDoctor = q.doctor_id?.toString() === doctorId.toString();
-          return (
-            queueDate === todayFormatted &&
-            matchesDoctor &&
-            q.status !== "completed"
-          );
-        });
-
-        if (todayQueuesForDoctor.length === 0) {
-          return 1;
-        }
-
-        const maxQueueNumber = todayQueuesForDoctor.reduce((max, q) => {
-          return Math.max(max, Number(q.queueNumber) || 0);
-        }, 0);
-
-        return maxQueueNumber + 1;
-      };
-
-      const nextQueueNumber = getNextQueueNumberForDoctor(
+      const nextQueueNumber = this.getNextQueueNumberForDoctor(
         currentQueues,
         doctor._id
+      );
+
+      console.log(
+        `Assigned queue number: ${nextQueueNumber} for doctor: ${doctor.name}`
       );
 
       const newQueueEntry = {
@@ -532,10 +585,13 @@ export const PatientRecordComponent = {
       console.log("Queue data to send:", newQueueEntry);
 
       const addedQueue = await api.addQueue(newQueueEntry, token);
+      console.log("Queue added successfully:", addedQueue);
 
       this.app.showModal(
         "Berhasil Ditambahkan",
-        `Pasien ${this.patient.name} telah ditambahkan ke antrian Dr. ${doctor.name}.\n\nNomor Antrian: ${addedQueue.queueNumber}`,
+        `Pasien ${this.patient.name} telah ditambahkan ke antrian Dr. ${
+          doctor.name
+        }.\n\nNomor Antrian: ${addedQueue.queueNumber || nextQueueNumber}`,
         () => {
           this.app.router.navigate("queue");
         }
@@ -548,12 +604,19 @@ export const PatientRecordComponent = {
     } catch (error) {
       console.error("Error adding queue:", error);
       if (error.response) {
-        error.response.json().then((data) => {
+        try {
+          const errorData = await error.response.json();
           this.app.showNotification(
-            "Gagal menambahkan antrian: " + (data.message || error.message),
+            "Gagal menambahkan antrian: " +
+              (errorData.message || error.message),
             "error"
           );
-        });
+        } catch (parseError) {
+          this.app.showNotification(
+            "Gagal menambahkan antrian: " + error.message,
+            "error"
+          );
+        }
       } else {
         this.app.showNotification(
           "Gagal menambahkan antrian: " + error.message,
