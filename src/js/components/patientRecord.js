@@ -31,6 +31,9 @@ export const PatientRecordComponent = {
     const patientIdToUse = patient._id || patient.id;
     const medicalHistory = this.getMedicalHistory(patientIdToUse);
 
+    // Load doctors data first before rendering
+    await this.loadDoctors();
+
     return `
             <div class="fade-in">
                 <div class="card">
@@ -302,11 +305,17 @@ export const PatientRecordComponent = {
   },
 
   renderDoctorOptions() {
-    if (!this.app || !this.app.doctors) {
-      return "";
+    console.log("renderDoctorOptions called, doctors:", this.app?.doctors);
+    
+    if (!this.app || !this.app.doctors || this.app.doctors.length === 0) {
+      console.log("No doctors available");
+      return '<option value="" disabled>Loading dokter...</option>';
     }
+    
     const doctors = this.app.doctors;
-    return doctors
+    console.log("Rendering options for", doctors.length, "doctors");
+    
+    const options = doctors
       .filter((doctor) => doctor.status === "available")
       .map(
         (doctor) => `
@@ -316,6 +325,9 @@ export const PatientRecordComponent = {
             `
       )
       .join("");
+      
+    console.log("Generated options:", options);
+    return options;
   },
 
   calculateAge(birthDate) {
@@ -365,21 +377,57 @@ export const PatientRecordComponent = {
     }
 
     console.log("Patient loaded:", this.patient.name);
+    // Load doctors after DOM is ready
     await this.loadDoctors();
     this.setupEventListeners();
   },
 
   async loadDoctors() {
+    console.log("Loading doctors...");
     try {
-      const token = this.app.currentUser.token;
+      if (!this.app) {
+        console.error("App not initialized");
+        return;
+      }
+      
+      const token = this.app.currentUser?.token;
+      if (!token) {
+        console.error("No token available");
+        return;
+      }
+      
       const api = await import("../../../js/utils/api.js");
       this.app.doctors = await api.getDoctors(token);
+      console.log("Doctors loaded:", this.app.doctors.length);
+      
+      // Update dropdown setelah data dimuat
+      this.updateDoctorDropdown();
     } catch (error) {
-      this.app.showNotification(
-        "Gagal mengambil data dokter: " + error.message,
-        "error"
-      );
+      console.error("Error loading doctors:", error);
+      if (this.app && this.app.showNotification) {
+        this.app.showNotification(
+          "Gagal mengambil data dokter: " + error.message,
+          "error"
+        );
+      }
       this.app.doctors = [];
+    }
+  },
+
+  updateDoctorDropdown() {
+    const doctorSelect = document.getElementById("doctorSelect");
+    if (!doctorSelect) return;
+    
+    console.log("Updating doctor dropdown...");
+    
+    // Clear existing options
+    doctorSelect.innerHTML = '<option value="">-- Pilih Dokter --</option>';
+    
+    // Add new options
+    const optionsHTML = this.renderDoctorOptions();
+    if (optionsHTML && optionsHTML !== '<option value="" disabled>Loading dokter...</option>') {
+      doctorSelect.innerHTML = '<option value="">-- Pilih Dokter --</option>' + optionsHTML;
+      console.log("Dropdown updated with", this.app.doctors.length, "doctors");
     }
   },
 
