@@ -428,7 +428,7 @@ export const AddPatientComponent = {
       return;
     }
 
-    const targetSize = 160;
+    const targetSize = 240;
     canvas.width = targetSize;
     canvas.height = targetSize;
     const ctx = canvas.getContext("2d");
