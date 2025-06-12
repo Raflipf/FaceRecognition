@@ -187,27 +187,6 @@ export const PatientsComponent = {
       this.app.hideLoading();
     }
   },
-  async deletePatient(patientId) {
-  try {
-    const token = this.app.currentUser.token;
-    const api = await import("../../../js/utils/api.js");
-
-    const confirmed = confirm("Apakah Anda yakin ingin menghapus pasien ini?");
-    if (!confirmed) return;
-
-    await api.deletePatient(patientId, token);
-
-    this.app.showNotification("Pasien berhasil dihapus", "success");
-    this.refreshData();
-  } catch (error) {
-    console.error("Gagal menghapus pasien:", error);
-    this.app.showNotification(
-      "Gagal menghapus pasien: " + error.message,
-      "error"
-    );
-  }
-},
-
 
   filterPatients() {
     console.log("--- Memulai proses filter pasien ---");
@@ -339,11 +318,6 @@ export const PatientsComponent = {
                                 onclick="patientsComponent.addToQueue('${patientId}')">
                             <i class="fas fa-plus"></i>
                             Antri
-                        </button>
-                        <button class="btn btn-danger" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;"
-                                onclick="patientsComponent.deletePatient('${patientId}')">
-                            <i class="fas fa-trash"></i>
-                            Hapus
                         </button>
                     </div>
                 </td>
