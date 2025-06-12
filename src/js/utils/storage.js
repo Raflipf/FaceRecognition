@@ -1,6 +1,4 @@
-// Local Storage Utility
 export const Storage = {
-    // Initialize storage with default data if empty
     init() {
         if (!this.get('initialized')) {
             this.set('initialized', true);
@@ -10,7 +8,6 @@ export const Storage = {
         }
     },
 
-    // Get data from localStorage
     get(key) {
         try {
             const data = localStorage.getItem(key);
@@ -21,7 +18,6 @@ export const Storage = {
         }
     },
 
-    // Set data to localStorage
     set(key, value) {
         try {
             localStorage.setItem(key, JSON.stringify(value));
@@ -32,7 +28,6 @@ export const Storage = {
         }
     },
 
-    // Remove data from localStorage
     remove(key) {
         try {
             localStorage.removeItem(key);
@@ -43,7 +38,6 @@ export const Storage = {
         }
     },
 
-    // Clear all data
     clear() {
         try {
             localStorage.clear();
@@ -54,7 +48,6 @@ export const Storage = {
         }
     },
 
-    // Get all keys
     getKeys() {
         try {
             return Object.keys(localStorage);
@@ -64,12 +57,10 @@ export const Storage = {
         }
     },
 
-    // Check if key exists
     has(key) {
         return localStorage.getItem(key) !== null;
     },
 
-    // Get storage size (approximate)
     getSize() {
         try {
             let size = 0;
@@ -85,7 +76,6 @@ export const Storage = {
         }
     },
 
-    // Export all data
     exportData() {
         try {
             const data = {};
@@ -101,7 +91,6 @@ export const Storage = {
         }
     },
 
-    // Import data
     importData(data) {
         try {
             for (let key in data) {

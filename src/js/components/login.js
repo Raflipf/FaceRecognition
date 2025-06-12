@@ -1,4 +1,3 @@
-// Login Component
 export const LoginComponent = {
     render() {
         return `
@@ -73,7 +72,6 @@ export const LoginComponent = {
             }
         });
 
-        // Focus on username field
         usernameInput.focus();
     }
 };

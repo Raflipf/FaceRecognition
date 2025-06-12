@@ -1,4 +1,3 @@
-// Dashboard Component
 import {
   getUsers,
   getPatients,

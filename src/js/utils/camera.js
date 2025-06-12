@@ -1,24 +1,19 @@
-// Camera Utility for Face Recognition
 export const Camera = {
-    // Start camera stream
     async start(videoElementId) {
         try {
-            // Check if getUserMedia is supported
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 throw new Error('Camera tidak didukung di browser ini');
             }
 
-            // Request camera access
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: {
                     width: { ideal: 640 },
                     height: { ideal: 480 },
-                    facingMode: 'user' // Front camera preferred
+                    facingMode: 'user'
                 },
                 audio: false
             });
 
-            // Get video element and set stream
             const videoElement = document.getElementById(videoElementId);
             if (!videoElement) {
                 throw new Error('Video element tidak ditemukan');
@@ -26,12 +21,10 @@ export const Camera = {
 
             videoElement.srcObject = stream;
             
-            // Wait for video to be ready
             await new Promise((resolve, reject) => {
                 videoElement.onloadedmetadata = resolve;
                 videoElement.onerror = reject;
                 
-                // Timeout after 10 seconds
                 setTimeout(() => reject(new Error('Timeout menunggu kamera')), 10000);
             });
 
@@ -39,7 +32,6 @@ export const Camera = {
         } catch (error) {
             console.error('Error starting camera:', error);
             
-            // Provide user-friendly error messages
             let errorMessage = 'Gagal mengakses kamera';
             
             if (error.name === 'NotAllowedError') {
@@ -58,7 +50,6 @@ export const Camera = {
         }
     },
 
-    // Stop camera stream
     stop(stream) {
         try {
             if (stream) {
@@ -72,7 +63,6 @@ export const Camera = {
         }
     },
 
-    // Capture image from video element
     capture(videoElementId, canvasElementId, quality = 0.8) {
         try {
             const videoElement = document.getElementById(videoElementId);
@@ -82,7 +72,6 @@ export const Camera = {
                 throw new Error('Video atau canvas element tidak ditemukan');
             }
 
-            // Set canvas size to match video
             const videoWidth = videoElement.videoWidth;
             const videoHeight = videoElement.videoHeight;
             
@@ -93,11 +82,9 @@ export const Camera = {
             canvasElement.width = videoWidth;
             canvasElement.height = videoHeight;
 
-            // Draw video frame to canvas
             const context = canvasElement.getContext('2d');
             context.drawImage(videoElement, 0, 0, videoWidth, videoHeight);
 
-            // Convert to data URL
             const dataUrl = canvasElement.toDataURL('image/jpeg', quality);
             
             return dataUrl;
@@ -107,14 +94,12 @@ export const Camera = {
         }
     },
 
-    // Check camera availability
     async checkAvailability() {
         try {
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 return false;
             }
 
-            // Try to enumerate devices
             const devices = await navigator.mediaDevices.enumerateDevices();
             const videoDevices = devices.filter(device => device.kind === 'videoinput');
             
@@ -125,7 +110,6 @@ export const Camera = {
         }
     },
 
-    // Get available cameras
     async getAvailableCameras() {
         try {
             if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
@@ -146,7 +130,6 @@ export const Camera = {
         }
     },
 
-    // Start camera with specific device
     async startWithDevice(videoElementId, deviceId) {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
@@ -178,7 +161,6 @@ export const Camera = {
         }
     },
 
-    // Request camera permissions
     async requestPermissions() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
@@ -186,7 +168,6 @@ export const Camera = {
                 audio: false
             });
             
-            // Immediately stop the stream as we just wanted permissions
             this.stop(stream);
             
             return true;

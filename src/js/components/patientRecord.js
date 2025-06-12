@@ -1,4 +1,3 @@
-// Patient Record Component
 import { Storage } from "../utils/storage.js";
 
 export const PatientRecordComponent = {
@@ -163,7 +162,6 @@ export const PatientRecordComponent = {
   async getPatient(patientId) {
     console.log("PatientRecordComponent.getPatient called with ID:", patientId);
 
-    // First check if there's a currently recognized patient
     const recognizedPatient = Storage.get("currentRecognizedPatient");
     if (recognizedPatient) {
       console.log("Found recognized patient:", recognizedPatient.name);
@@ -411,7 +409,6 @@ export const PatientRecordComponent = {
       return;
     }
 
-    // Map priority string to integer as per API example
     const priorityMap = {
       normal: 1,
       urgent: 2,
@@ -419,7 +416,6 @@ export const PatientRecordComponent = {
     };
     const priority = priorityMap[priorityStr] || 1;
 
-    // Find doctor object by selected doctor id string
     const doctorIdStr = doctorSelect.value;
     const doctor = this.app.doctors.find((d) => d._id === doctorIdStr);
     if (!doctor) {
@@ -429,7 +425,6 @@ export const PatientRecordComponent = {
 
     const patientId = this.patient._id || this.patient.id;
 
-    // Create new queue entry with valid _id fields
     const newQueueEntry = {
       patient_id: patientId,
       doctor_id: doctor._id,
@@ -459,7 +454,6 @@ export const PatientRecordComponent = {
         }
       );
 
-      // Reset form
       const form = document.getElementById("newVisitForm");
       if (form) {
         form.reset();

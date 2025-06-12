@@ -445,10 +445,8 @@ export const QueueComponent = {
     this.app = app;
     window.queueComponent = this;
 
-    // Tampilkan loading indicator
     this.app.showLoading();
 
-    // Remove any existing refresh interval
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval);
     }
@@ -468,7 +466,6 @@ export const QueueComponent = {
       console.error("Error initializing queue:", error);
       this.app.showNotification("Gagal memuat data antrian", "error");
     } finally {
-      // Sembunyikan loading indicator setelah selesai atau error
       this.app.hideLoading();
     }
   },

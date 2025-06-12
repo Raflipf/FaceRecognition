@@ -1,4 +1,3 @@
-// Add Patient Component - Fixed Version
 import { Camera } from "../utils/camera.js";
 import { Storage } from "../utils/storage.js";
 import { addPatient } from "../../../js/utils/api.js";
@@ -136,7 +135,7 @@ export const AddPatientComponent = {
                                         id="emergencyContact" 
                                         name="emergencyContact" 
                                         class="form-input" 
-                                        placeholder="Nama & No. Telepon kontak darurat"
+                                        placeholder="No. Telepon kontak darurat"
                                     >
                                 </div>
                             </div>
@@ -429,25 +428,21 @@ export const AddPatientComponent = {
       return;
     }
 
-    // Resize ke 160x160
     const targetSize = 160;
     canvas.width = targetSize;
     canvas.height = targetSize;
     const ctx = canvas.getContext("2d");
 
-    // Biar gambar tetap center & crop proporsional ke 160x160
     const videoAspect = video.videoWidth / video.videoHeight;
-    const targetAspect = 1; // 160/160
+    const targetAspect = 1;
 
     let sx, sy, sWidth, sHeight;
     if (videoAspect > targetAspect) {
-      // video lebih lebar dari 1:1
       sHeight = video.videoHeight;
       sWidth = sHeight * targetAspect;
       sx = (video.videoWidth - sWidth) / 2;
       sy = 0;
     } else {
-      // video lebih tinggi dari 1:1
       sWidth = video.videoWidth;
       sHeight = sWidth / targetAspect;
       sx = 0;
@@ -456,7 +451,6 @@ export const AddPatientComponent = {
 
     ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, targetSize, targetSize);
 
-    // Convert ke base64, kualitas bisa diatur
     const photoData = canvas.toDataURL("image/jpeg", 0.8);
     this.capturedPhotos.push(photoData);
 
@@ -686,7 +680,7 @@ export const AddPatientComponent = {
 
       this.app.showModal(
         "Pasien Berhasil Ditambahkan",
-        `Pasien ${patientData.name} telah berhasil didaftarkan dalam sistem dengan 5 foto untuk face recognition.\n\nNIK: ${patientData.nik}`,
+        `Pasien ${patientData.name} telah berhasil didaftarkan dalam sistem untuk face recognition.\n\nNIK: ${patientData.nik}`,
         () => {
           this.app.router.navigate("dashboard");
         }

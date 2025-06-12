@@ -1,4 +1,3 @@
-// Patients List Component
 export const PatientsComponent = {
   render() {
     return `
@@ -155,12 +154,10 @@ export const PatientsComponent = {
       }
     });
 
-    // Refresh button
     if (refreshBtn) {
       refreshBtn.addEventListener("click", () => this.refreshData());
     }
 
-    // View toggle buttons
     if (cardViewBtn) {
       cardViewBtn.addEventListener("click", () => this.switchView("card"));
     }
@@ -178,7 +175,7 @@ export const PatientsComponent = {
       );
       this.allPatients = patients;
       this.filteredPatients = [...patients];
-      this.app.storage.set("patients", patients); // Save patients to Storage
+      this.app.storage.set("patients", patients);
       this.renderPatients();
       this.updateStatistics();
     } catch (error) {
@@ -522,7 +519,6 @@ export const PatientsComponent = {
 
   addToQueue(patientId) {
     console.log("Adding patient to queue with ID:", patientId);
-    // Store selected patient for queue
     const patient = this.allPatients.find((p) => (p._id || p.id) === patientId);
     if (patient) {
       this.app.storage.set("selectedPatientForQueue", patient);
@@ -542,6 +538,5 @@ export const PatientsComponent = {
   },
 
   destroy() {
-    // Cleanup if needed
   },
 };

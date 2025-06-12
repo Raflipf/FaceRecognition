@@ -1,4 +1,3 @@
-// Face Recognition Component
 import { Camera } from '../utils/camera.js';
 import { Storage } from '../utils/storage.js';
 
@@ -160,24 +159,19 @@ export const FaceRecognitionComponent = {
         const canvas = document.getElementById('captureCanvas');
         const capturedImage = document.getElementById('capturedImage');
         
-        // Set canvas size to match video
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         
-        // Draw video frame to canvas
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         
-        // Convert canvas to image
         const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
         capturedImage.src = imageDataUrl;
         
-        // Stop camera and show captured section
         this.stopCamera();
         document.getElementById('cameraSection').style.display = 'none';
         document.getElementById('capturedSection').style.display = 'block';
         
-        // Start face recognition process
         this.processFaceRecognition(imageDataUrl);
     },
 
@@ -229,7 +223,6 @@ export const FaceRecognitionComponent = {
             <small>Silakan daftarkan sebagai pasien baru</small>
         `;
         
-        // Add button to go to add patient page
         setTimeout(() => {
             resultEl.innerHTML += `
                 <div style="margin-top: 1rem;">
@@ -244,13 +237,10 @@ export const FaceRecognitionComponent = {
 
     confirmIdentification(isCorrect) {
         if (isCorrect && this.recognizedPatient) {
-            // Store the recognized patient for use in patient record
             Storage.set('currentRecognizedPatient', this.recognizedPatient);
             
-            // Navigate to patient record
             this.app.router.navigate('patient-record', { patientId: this.recognizedPatient.id });
         } else {
-            // If incorrect, restart the process
             this.app.showNotification('Identifikasi dibatalkan. Silakan coba lagi.', 'info');
             this.retakePhoto();
         }
@@ -261,7 +251,6 @@ export const FaceRecognitionComponent = {
         document.getElementById('verificationSection').style.display = 'none';
         document.getElementById('cameraSection').style.display = 'block';
         
-        // Reset recognition result
         const resultEl = document.getElementById('recognitionResult');
         resultEl.className = 'recognition-result pending';
         resultEl.innerHTML = `

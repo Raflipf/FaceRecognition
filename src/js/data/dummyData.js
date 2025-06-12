@@ -1,10 +1,7 @@
-// Dummy Data for Hospital Management System
 import { Storage } from '../utils/storage.js';
 
 export const DummyData = {
-    // Initialize dummy data if storage is empty
     init() {
-        // Only initialize if data doesn't exist
         if (!Storage.get('dataInitialized')) {
             this.initializeDoctors();
             this.initializePatients();
@@ -13,7 +10,6 @@ export const DummyData = {
         }
     },
 
-    // Initialize doctors data
     initializeDoctors() {
         const doctors = [
             {
@@ -157,7 +153,6 @@ export const DummyData = {
         Storage.set('doctors', doctors);
     },
 
-    // Initialize patients data
     initializePatients() {
         const patients = [
             {
@@ -315,7 +310,6 @@ export const DummyData = {
         Storage.set('patients', patients);
     },
 
-    // Initialize sample queue data
     initializeQueue() {
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -331,7 +325,7 @@ export const DummyData = {
                 complaint: "Nyeri dada dan sesak napas",
                 priority: "urgent",
                 status: "completed",
-                timestamp: new Date(today.getTime() + 8 * 60 * 60 * 1000).toISOString(), // 8 AM
+                timestamp: new Date(today.getTime() + 8 * 60 * 60 * 1000).toISOString(), 
                 queueNumber: 1,
                 examinationStartTime: new Date(today.getTime() + 8 * 60 * 60 * 1000 + 30 * 60 * 1000).toISOString(),
                 completionTime: new Date(today.getTime() + 9 * 60 * 60 * 1000).toISOString(),
@@ -349,7 +343,7 @@ export const DummyData = {
                 complaint: "Demam tinggi dan batuk pada anak",
                 priority: "normal",
                 status: "completed",
-                timestamp: new Date(today.getTime() + 9 * 60 * 60 * 1000).toISOString(), // 9 AM
+                timestamp: new Date(today.getTime() + 9 * 60 * 60 * 1000).toISOString(),
                 queueNumber: 1,
                 examinationStartTime: new Date(today.getTime() + 9 * 60 * 60 * 1000 + 15 * 60 * 1000).toISOString(),
                 completionTime: new Date(today.getTime() + 9 * 60 * 60 * 1000 + 45 * 60 * 1000).toISOString(),
@@ -367,7 +361,7 @@ export const DummyData = {
                 complaint: "Nyeri lutut kanan setelah jatuh",
                 priority: "normal",
                 status: "examining",
-                timestamp: new Date(today.getTime() + 10 * 60 * 60 * 1000).toISOString(), // 10 AM
+                timestamp: new Date(today.getTime() + 10 * 60 * 60 * 1000).toISOString(), 
                 queueNumber: 1,
                 examinationStartTime: new Date(today.getTime() + 10 * 60 * 60 * 1000 + 20 * 60 * 1000).toISOString()
             },
@@ -381,7 +375,7 @@ export const DummyData = {
                 complaint: "Kontrol rutin hipertensi",
                 priority: "normal",
                 status: "waiting",
-                timestamp: new Date(today.getTime() + 11 * 60 * 60 * 1000).toISOString(), // 11 AM
+                timestamp: new Date(today.getTime() + 11 * 60 * 60 * 1000).toISOString(), 
                 queueNumber: 2
             },
             {
@@ -394,7 +388,7 @@ export const DummyData = {
                 complaint: "Ruam kulit dan gatal-gatal",
                 priority: "normal",
                 status: "waiting",
-                timestamp: new Date(today.getTime() + 11 * 60 * 60 * 1000 + 30 * 60 * 1000).toISOString(), // 11:30 AM
+                timestamp: new Date(today.getTime() + 11 * 60 * 60 * 1000 + 30 * 60 * 1000).toISOString(), 
                 queueNumber: 1
             },
             {
@@ -407,7 +401,7 @@ export const DummyData = {
                 complaint: "Kontrol kehamilan trimester kedua",
                 priority: "normal",
                 status: "waiting",
-                timestamp: new Date(today.getTime() + 12 * 60 * 60 * 1000).toISOString(), // 12 PM
+                timestamp: new Date(today.getTime() + 12 * 60 * 60 * 1000).toISOString(), 
                 queueNumber: 1
             }
         ];
@@ -415,7 +409,6 @@ export const DummyData = {
         Storage.set('queue', sampleQueue);
     },
 
-    // Reset all data (useful for testing)
     reset() {
         Storage.remove('dataInitialized');
         Storage.remove('doctors');
@@ -424,7 +417,6 @@ export const DummyData = {
         this.init();
     },
 
-    // Add more doctors
     addDoctor(doctorData) {
         const doctors = Storage.get('doctors') || [];
         const newDoctor = {
@@ -437,7 +429,6 @@ export const DummyData = {
         return newDoctor;
     },
 
-    // Add more patients
     addPatient(patientData) {
         const patients = Storage.get('patients') || [];
         const newPatient = {
@@ -451,7 +442,6 @@ export const DummyData = {
         return newPatient;
     },
 
-    // Get statistics
     getStats() {
         const doctors = Storage.get('doctors') || [];
         const patients = Storage.get('patients') || [];
@@ -472,14 +462,12 @@ export const DummyData = {
         };
     },
 
-    // Get medical specialties
     getSpecialties() {
         const doctors = Storage.get('doctors') || [];
         const specialties = [...new Set(doctors.map(d => d.specialty))];
         return specialties.sort();
     },
 
-    // Generate random patient data (for testing)
     generateRandomPatient() {
         const firstNames = ["Ahmad", "Siti", "Budi", "Dewi", "Eko", "Fitri", "Galih", "Hana", "Irfan", "Joko"];
         const lastNames = ["Setiawan", "Rahayu", "Santoso", "Kusuma", "Pratama", "Lestari", "Wijaya", "Permata", "Nugroho", "Sari"];
@@ -488,7 +476,7 @@ export const DummyData = {
         
         const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
         const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-        const birthYear = 1960 + Math.floor(Math.random() * 40); // Ages 23-63
+        const birthYear = 1960 + Math.floor(Math.random() * 40); 
         const birthMonth = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
         const birthDay = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0');
         
