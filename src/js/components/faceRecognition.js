@@ -1,6 +1,6 @@
 import { Camera } from "../utils/camera.js";
 import { Storage } from "../utils/storage.js";
-import { recognizeFace, getPatientByName } from "../../../js/utils/api.js";
+import { recognizeFace, getPatientByName } from "../utils/api.js";
 
 export const FaceRecognitionComponent = {
   render() {

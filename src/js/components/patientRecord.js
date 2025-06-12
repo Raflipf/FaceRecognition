@@ -1,5 +1,5 @@
 import { Storage } from "../utils/storage.js";
-import * as api from "../../../js/utils/api.js";
+import * as api from "../utils/api.js";
 
 export const PatientRecordComponent = {
   async render(patientId) {
@@ -213,7 +213,7 @@ export const PatientRecordComponent = {
     try {
       console.log("Fetching patient from API with ID:", patientId);
       const token = this.app.currentUser.token;
-      const api = await import("../../../js/utils/api.js");
+      const api = await import("../utils/api.js");
       patient = await api.getPatientById(patientId, token);
 
       if (patient) {
@@ -405,7 +405,7 @@ export const PatientRecordComponent = {
         return;
       }
 
-      const api = await import("../../../js/utils/api.js");
+      const api = await import("../utils/api.js");
       this.app.doctors = await api.getDoctors(token);
       console.log("Doctors loaded:", this.app.doctors.length);
 

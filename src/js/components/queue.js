@@ -5,7 +5,7 @@ import {
   getPatients,
   addQueue,
   updateQueue,
-} from "../../../js/utils/api.js";
+} from "../utils/api.js";
 
 export const QueueComponent = {
   doctors: [],
@@ -818,8 +818,8 @@ export const QueueComponent = {
               <div class="detail-row">
                 <span class="detail-label">Dokter:</span>
                 <span class="detail-value">Dr. ${queueItem.doctorName} (${
-                  queueItem.doctorSpecialty
-                })</span>
+      queueItem.doctorSpecialty
+    })</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">Tanggal:</span>

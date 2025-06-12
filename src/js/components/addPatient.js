@@ -1,6 +1,6 @@
 import { Camera } from "../utils/camera.js";
 import { Storage } from "../utils/storage.js";
-import { addPatient, generateFaceEmbedding } from "../../../js/utils/api.js";
+import { addPatient, generateFaceEmbedding } from "../utils/api.js";
 
 export const AddPatientComponent = {
   render() {

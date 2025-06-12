@@ -170,7 +170,7 @@ export const PatientsComponent = {
     this.app.showLoading();
     try {
       const token = this.app.currentUser.token;
-      const patients = await import("../../../js/utils/api.js").then((api) =>
+      const patients = await import("../utils/api.js").then((api) =>
         api.getPatients(token)
       );
       this.allPatients = patients;
@@ -188,12 +188,14 @@ export const PatientsComponent = {
     }
   },
 
-   async deletePatient(patientId) {
+  async deletePatient(patientId) {
     try {
       const token = this.app.currentUser.token;
-      const api = await import("../../../js/utils/api.js");
+      const api = await import("../utils/api.js");
 
-      const confirmed = confirm("Apakah Anda yakin ingin menghapus pasien ini?");
+      const confirmed = confirm(
+        "Apakah Anda yakin ingin menghapus pasien ini?"
+      );
       if (!confirmed) return;
 
       await api.deletePatient(patientId, token);
@@ -563,6 +565,5 @@ export const PatientsComponent = {
     this.app.showNotification("Data pasien berhasil diperbarui", "success");
   },
 
-  destroy() {
-  },
+  destroy() {},
 };

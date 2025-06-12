@@ -1,9 +1,4 @@
-import {
-  getUsers,
-  getPatients,
-  getDoctors,
-  getQueues,
-} from "../../../js/utils/api.js";
+import { getUsers, getPatients, getDoctors, getQueues } from "../utils/api.js";
 
 export const DashboardComponent = {
   users: [],

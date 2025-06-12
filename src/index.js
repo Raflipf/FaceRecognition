@@ -16,7 +16,7 @@ import { QueueComponent } from "./js/components/queue.js";
 import { PatientsComponent } from "./js/components/patients.js";
 
 // Main Application Class
-import { loginUser } from "../js/utils/api.js";
+import { loginUser } from "./js/utils/api.js";
 
 class HospitalApp {
   constructor() {
