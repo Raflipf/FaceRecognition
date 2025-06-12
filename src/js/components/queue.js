@@ -46,11 +46,9 @@ export const QueueComponent = {
   async loadQueues() {
     try {
       const token = this.app.currentUser.token;
-      this.queues = await getQueues(token);
-
-      const processedQueues = await this.processQueueData(this.queues);
-
-      Storage.set("queue", processedQueues);
+      const fetchedQueues = await getQueues(token);
+      this.queues = await this.processQueueData(fetchedQueues);
+      Storage.set("queue", this.queues);
     } catch (error) {
       this.app.showNotification(
         "Gagal mengambil data antrian: " + error.message,
@@ -60,21 +58,83 @@ export const QueueComponent = {
     }
   },
 
+  async addQueue(patientId, doctorId, complaint, priority) {
+    try {
+      this.app.showLoading();
+      const token = this.app.currentUser.token;
+
+      await this.loadQueues();
+
+      const nextQueueNumber = this.getNextQueueNumber(doctorId);
+
+      const queueData = {
+        patient_id: patientId,
+        doctor_id: doctorId,
+        complaint: complaint,
+        priority: priority,
+        status: "waiting",
+        queueNumber: nextQueueNumber,
+        timestamp: new Date().toISOString(),
+      };
+
+      const newQueue = await addQueue(queueData, token);
+
+      await this.loadQueues();
+
+      this.app.showNotification("Antrian berhasil ditambahkan", "success");
+      this.refreshQueue();
+
+      return newQueue;
+    } catch (error) {
+      this.app.showNotification(
+        "Gagal menambahkan antrian: " + error.message,
+        "error"
+      );
+      throw error;
+    } finally {
+      this.app.hideLoading();
+    }
+  },
+
+  getNextQueueNumber(doctorId = null) {
+    const today = new Date();
+    const todayFormatted = today.toISOString().split("T")[0];
+
+    const todayQueues = this.queues.filter((q) => {
+      const queueDate = new Date(q.timestamp).toISOString().split("T")[0];
+      const matchesDoctor = doctorId
+        ? q.doctor_id?.toString() === doctorId.toString() ||
+          q.doctorId?.toString() === doctorId.toString()
+        : true;
+      return (
+        queueDate === todayFormatted &&
+        matchesDoctor &&
+        q.status !== "completed"
+      );
+    });
+
+    if (todayQueues.length === 0) {
+      return 1;
+    }
+
+    const maxQueueNumber = todayQueues.reduce((max, q) => {
+      return Math.max(max, Number(q.queueNumber) || 0);
+    }, 0);
+
+    return maxQueueNumber + 1;
+  },
+
   async processQueueData(queues) {
     const patients =
       this.patients.length > 0 ? this.patients : await this.loadPatients();
     const doctors =
       this.doctors.length > 0 ? this.doctors : await this.loadDoctors();
 
-    console.log("Processing queues:", queues.length);
-    console.log("Available patients:", patients.length);
-    console.log("Available doctors:", doctors.length);
-
     return queues.map((queue) => {
       const patient =
         queue.patient_id && typeof queue.patient_id === "object"
           ? queue.patient_id
-          : this.patients.find(
+          : patients.find(
               (p) =>
                 (p._id || p.id)?.toString() === queue.patient_id?.toString()
             );
@@ -82,20 +142,21 @@ export const QueueComponent = {
       const doctor =
         queue.doctor_id && typeof queue.doctor_id === "object"
           ? queue.doctor_id
-          : this.doctors.find(
+          : doctors.find(
               (d) => (d._id || d.id)?.toString() === queue.doctor_id?.toString()
             );
 
       return {
         ...queue,
         id: queue._id || queue.id,
-        patientId: queue.patient_id?._id || queue.patient_id,
-        doctorId: queue.doctor_id?._id || queue.doctor_id,
+        patientId: patient ? patient._id || patient.id : queue.patient_id,
+        doctorId: doctor ? doctor._id || doctor.id : queue.doctor_id,
         patientName: patient ? patient.name : "Pasien Tidak Dikenal",
         doctorName: doctor ? `${doctor.name}` : "Dokter Tidak Dikenal",
         doctorSpecialty: doctor
           ? doctor.specialty
           : "Spesialisasi Tidak Dikenal",
+        queueNumber: queue.queueNumber || 1,
       };
     });
   },
@@ -221,7 +282,7 @@ export const QueueComponent = {
   },
 
   getFilteredQueue() {
-    const queue = Storage.get("queue") || [];
+    const queue = this.queues || [];
     const doctorFilter = document.getElementById("doctorFilter")?.value || "";
     const statusFilter = document.getElementById("statusFilter")?.value || "";
     const dateFilter =
@@ -520,8 +581,7 @@ export const QueueComponent = {
   },
 
   startExamination(queueId) {
-    const queue = Storage.get("queue") || [];
-    const queueItem = queue.find(
+    const queueItem = this.queues.find(
       (q) =>
         (q._id && q._id.toString() === queueId.toString()) ||
         (q.id && q.id.toString() === queueId.toString())
@@ -537,6 +597,7 @@ export const QueueComponent = {
       `Mulai pemeriksaan untuk pasien ${queueItem.patientName}?`,
       async () => {
         try {
+          this.app.showLoading();
           const token = this.app.currentUser.token;
           const updateData = {
             status: "examining",
@@ -545,8 +606,7 @@ export const QueueComponent = {
 
           await updateQueue(queueId, updateData, token);
 
-          queueItem.status = "examining";
-          queueItem.examinationStartTime = new Date().toISOString();
+          await this.loadQueues();
 
           const doctors = Storage.get("doctors") || [];
           const doctorId = queueItem.doctorId || queueItem.doctor_id;
@@ -560,7 +620,6 @@ export const QueueComponent = {
             Storage.set("doctors", doctors);
           }
 
-          Storage.set("queue", queue);
           this.refreshQueue();
 
           this.app.showNotification(
@@ -572,6 +631,8 @@ export const QueueComponent = {
             "Gagal memulai pemeriksaan: " + error.message,
             "error"
           );
+        } finally {
+          this.app.hideLoading();
         }
       },
       true
@@ -579,8 +640,7 @@ export const QueueComponent = {
   },
 
   completeExamination(queueId) {
-    const queue = Storage.get("queue") || [];
-    const queueItem = queue.find(
+    const queueItem = this.queues.find(
       (q) =>
         (q._id && q._id.toString() === queueId.toString()) ||
         (q.id && q.id.toString() === queueId.toString())
@@ -683,11 +743,19 @@ export const QueueComponent = {
 
   async finalizeExamination(queueItem, completionData) {
     try {
-      queueItem.status = "completed";
-      queueItem.completionTime = new Date().toISOString();
-      queueItem.diagnosis = completionData.diagnosis;
-      queueItem.prescription = completionData.prescription;
-      queueItem.notes = completionData.notes;
+      this.app.showLoading();
+      const token = this.app.currentUser.token;
+      const updateData = {
+        status: "completed",
+        completionTime: new Date().toISOString(),
+        diagnosis: completionData.diagnosis,
+        prescription: completionData.prescription,
+        notes: completionData.notes,
+      };
+
+      await updateQueue(queueItem._id || queueItem.id, updateData, token);
+
+      await this.loadQueues();
 
       const doctors = Storage.get("doctors") || [];
       const doctorId = queueItem.doctorId || queueItem.doctor_id;
@@ -701,24 +769,7 @@ export const QueueComponent = {
         Storage.set("doctors", doctors);
       }
 
-      const currentQueues = Storage.get("queue") || [];
-      const updatedQueues = currentQueues.map((q) =>
-        (q._id || q.id) === (queueItem._id || queueItem.id) ? queueItem : q
-      );
-      Storage.set("queue", updatedQueues);
-
       this.refreshQueue();
-
-      const token = this.app.currentUser.token;
-      const updateData = {
-        status: "completed",
-        completionTime: queueItem.completionTime,
-        diagnosis: completionData.diagnosis,
-        prescription: completionData.prescription,
-        notes: completionData.notes,
-      };
-
-      await updateQueue(queueItem._id || queueItem.id, updateData, token);
 
       this.app.showNotification(
         `Pemeriksaan untuk ${queueItem.patientName} telah selesai`,
@@ -731,12 +782,13 @@ export const QueueComponent = {
         "error"
       );
       this.refreshQueue();
+    } finally {
+      this.app.hideLoading();
     }
   },
 
   viewDetails(queueId) {
-    const queue = Storage.get("queue") || [];
-    const queueItem = queue.find(
+    const queueItem = this.queues.find(
       (q) =>
         (q._id && q._id.toString() === queueId.toString()) ||
         (q.id && q.id.toString() === queueId.toString())
@@ -766,8 +818,8 @@ export const QueueComponent = {
               <div class="detail-row">
                 <span class="detail-label">Dokter:</span>
                 <span class="detail-value">Dr. ${queueItem.doctorName} (${
-                    queueItem.doctorSpecialty
-                  })</span>
+                  queueItem.doctorSpecialty
+                })</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">Tanggal:</span>

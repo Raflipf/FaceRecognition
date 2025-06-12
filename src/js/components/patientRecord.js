@@ -425,25 +425,37 @@ export const PatientRecordComponent = {
 
     const patientId = this.patient._id || this.patient.id;
 
-    const newQueueEntry = {
-      patient_id: patientId,
-      doctor_id: doctor._id,
-      complaint: complaint,
-      priority: priority,
-      status: "waiting",
-      queueNumber: this.getNextQueueNumber(doctor._id),
-      examinationStartTime: null,
-      completionTime: null,
-      diagnosis: "",
-      prescription: "",
-      notes: "",
-    };
-
-    console.log("Queue data to send:", newQueueEntry);
-
     try {
+      this.app.showLoading();
       const token = this.app.currentUser.token;
       const api = await import("../../../js/utils/api.js");
+
+      if (!window.queueComponent) {
+        console.error("QueueComponent is not available globally.");
+        this.app.showNotification(
+          "Terjadi kesalahan: Komponen antrian tidak ditemukan.",
+          "error"
+        );
+        return;
+      }
+
+      await window.queueComponent.loadQueues();
+      const nextQueueNumber = window.queueComponent.getNextQueueNumber(
+        doctor._id
+      );
+
+      const newQueueEntry = {
+        patient_id: patientId,
+        doctor_id: doctor._id,
+        complaint: complaint,
+        priority: priority,
+        status: "waiting",
+        queueNumber: nextQueueNumber,
+        timestamp: new Date().toISOString(),
+      };
+
+      console.log("Queue data to send:", newQueueEntry);
+
       const addedQueue = await api.addQueue(newQueueEntry, token);
 
       this.app.showModal(
@@ -473,22 +485,9 @@ export const PatientRecordComponent = {
           "error"
         );
       }
+    } finally {
+      this.app.hideLoading(); 
     }
   },
 
-  getNextQueueNumber(doctorId) {
-    const queue = Storage.get("queue") || [];
-    const today = new Date().toDateString();
-
-    const todayQueue = queue.filter((q) => {
-      const qDoctorId = q.doctor_id || q.doctorId;
-      return (
-        qDoctorId === doctorId &&
-        new Date(q.timestamp).toDateString() === today &&
-        q.status !== "completed"
-      );
-    });
-
-    return todayQueue.length + 1;
-  },
 };
