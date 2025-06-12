@@ -21,23 +21,19 @@ async function loginUser(credentials) {
     return data.token;
   } catch (error) {
     if (error instanceof TypeError && error.message === "Failed to fetch") {
-      throw new Error(
-        "Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS."
-      );
+      throw new Error("Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS.");
     }
     throw error;
   }
 }
+
 export async function getPatientByName(name, token) {
-  const response = await fetch(
-    `https://backend-mediface.vercel.app/api/patients`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
+  const response = await fetch(`${API_BASE_URL}/patients`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
 
   if (!response.ok) {
     const error = await response.json();
@@ -45,8 +41,6 @@ export async function getPatientByName(name, token) {
   }
 
   const patients = await response.json();
-
-  // Cocokkan nama (bisa disesuaikan pakai includes atau equals)
   return patients.find((p) => p.name.toLowerCase() === name.toLowerCase());
 }
 
@@ -70,9 +64,7 @@ async function addPatient(patientData, token) {
     return data;
   } catch (error) {
     if (error instanceof TypeError && error.message === "Failed to fetch") {
-      throw new Error(
-        "Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS."
-      );
+      throw new Error("Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS.");
     }
     throw error;
   }
@@ -96,9 +88,7 @@ async function getPatients(token) {
     return data;
   } catch (error) {
     if (error instanceof TypeError && error.message === "Failed to fetch") {
-      throw new Error(
-        "Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS."
-      );
+      throw new Error("Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS.");
     }
     throw error;
   }
@@ -122,13 +112,36 @@ async function getPatientById(id, token) {
     return data;
   } catch (error) {
     if (error instanceof TypeError && error.message === "Failed to fetch") {
-      throw new Error(
-        "Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS."
-      );
+      throw new Error("Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS.");
     }
     throw error;
   }
 }
+
+async function deletePatient(id, token) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/patients/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Gagal menghapus pasien");
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    if (error instanceof TypeError && error.message === "Failed to fetch") {
+      throw new Error("Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS.");
+    }
+    throw error;
+  }
+}
+
 async function getUsers(token) {
   try {
     const response = await fetch(`${API_BASE_URL}/users`, {
@@ -145,9 +158,7 @@ async function getUsers(token) {
     return data;
   } catch (error) {
     if (error instanceof TypeError && error.message === "Failed to fetch") {
-      throw new Error(
-        "Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS."
-      );
+      throw new Error("Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS.");
     }
     throw error;
   }
@@ -169,9 +180,7 @@ async function getQueues(token) {
     return data;
   } catch (error) {
     if (error instanceof TypeError && error.message === "Failed to fetch") {
-      throw new Error(
-        "Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS."
-      );
+      throw new Error("Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS.");
     }
     throw error;
   }
@@ -195,9 +204,7 @@ async function getDoctors(token) {
     return data;
   } catch (error) {
     if (error instanceof TypeError && error.message === "Failed to fetch") {
-      throw new Error(
-        "Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS."
-      );
+      throw new Error("Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS.");
     }
     throw error;
   }
@@ -223,9 +230,7 @@ async function addDoctor(doctorData, token) {
     return data;
   } catch (error) {
     if (error instanceof TypeError && error.message === "Failed to fetch") {
-      throw new Error(
-        "Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS."
-      );
+      throw new Error("Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS.");
     }
     throw error;
   }
@@ -251,9 +256,7 @@ async function updateDoctor(id, doctorData, token) {
     return data;
   } catch (error) {
     if (error instanceof TypeError && error.message === "Failed to fetch") {
-      throw new Error(
-        "Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS."
-      );
+      throw new Error("Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS.");
     }
     throw error;
   }
@@ -277,9 +280,7 @@ async function deleteDoctor(id, token) {
     return data;
   } catch (error) {
     if (error instanceof TypeError && error.message === "Failed to fetch") {
-      throw new Error(
-        "Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS."
-      );
+      throw new Error("Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS.");
     }
     throw error;
   }
@@ -305,34 +306,8 @@ async function addQueue(queueData, token) {
     return data;
   } catch (error) {
     if (error instanceof TypeError && error.message === "Failed to fetch") {
-      throw new Error(
-        "Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS."
-      );
+      throw new Error("Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS.");
     }
-    throw error;
-  }
-}
-async function recognizeFace(photo) {
-  const RECOGNIZE_API_URL =
-    "https://web-production-9ea44.up.railway.app/recognize";
-
-  try {
-    const response = await fetch(RECOGNIZE_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ photo }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error?.error || "Gagal mengenali wajah");
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error("recognizeFace error:", error);
     throw error;
   }
 }
@@ -357,16 +332,38 @@ async function updateQueue(id, queueData, token) {
     return data;
   } catch (error) {
     if (error instanceof TypeError && error.message === "Failed to fetch") {
-      throw new Error(
-        "Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS."
-      );
+      throw new Error("Gagal menghubungi server. Periksa koneksi jaringan atau konfigurasi CORS.");
     }
     throw error;
   }
 }
+
+async function recognizeFace(photo) {
+  const RECOGNIZE_API_URL = "https://web-production-9ea44.up.railway.app/recognize";
+
+  try {
+    const response = await fetch(RECOGNIZE_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ photo }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error?.error || "Gagal mengenali wajah");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("recognizeFace error:", error);
+    throw error;
+  }
+}
+
 async function generateFaceEmbedding({ patient_id, name, photos }) {
-  const EMBEDDING_API_URL =
-    "https://web-production-9ea44.up.railway.app/generate-embedding";
+  const EMBEDDING_API_URL = "https://web-production-9ea44.up.railway.app/generate-embedding";
 
   try {
     const response = await fetch(EMBEDDING_API_URL, {
@@ -394,6 +391,7 @@ export {
   addPatient,
   getPatients,
   getPatientById,
+  deletePatient,
   getDoctors,
   addDoctor,
   updateDoctor,
