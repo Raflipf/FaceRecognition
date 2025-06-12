@@ -1,6 +1,6 @@
 export const LoginComponent = {
-    render() {
-        return `
+  render() {
+    return `
             <div class="login-container">
                 <div class="login-card fade-in">
                     <div class="login-header">
@@ -31,7 +31,7 @@ export const LoginComponent = {
                                 required
                             >
                         </div>
-                        <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        <button type="submit" id="loginButton" class="btn btn-primary" style="width: 100%;">
                             <i class="fas fa-sign-in-alt"></i>
                             Login
                         </button>
@@ -44,34 +44,68 @@ export const LoginComponent = {
                 </div>
             </div>
         `;
-    },
+  },
 
-    init(app) {
-        const form = document.getElementById('loginForm');
-        const usernameInput = document.getElementById('username');
-        const passwordInput = document.getElementById('password');
+  init(app) {
+    const form = document.getElementById("loginForm");
+    const usernameInput = document.getElementById("username");
+    const passwordInput = document.getElementById("password");
+    const loginButton = document.getElementById("loginButton");
 
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const credentials = {
-                username: usernameInput.value.trim(),
-                password: passwordInput.value.trim()
-            };
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-            if (!credentials.username || !credentials.password) {
-                app.showNotification('Harap isi semua field', 'error');
-                return;
-            }
+      const credentials = {
+        username: usernameInput.value.trim(),
+        password: passwordInput.value.trim(),
+      };
 
-            try {
-                await app.login(credentials);
-                app.router.navigate('dashboard');
-            } catch (error) {
-                app.showNotification(error.message, 'error');
-            }
-        });
+      if (!credentials.username || !credentials.password) {
+        app.showNotification("Harap isi semua field", "error");
+        return;
+      }
 
-        usernameInput.focus();
+      this.setLoadingState(loginButton, true);
+
+      try {
+        await app.login(credentials);
+
+        app.showNotification("Login berhasil! Memuat dashboard...", "success");
+
+        setTimeout(() => {
+          app.router.navigate("dashboard");
+        }, 500);
+      } catch (error) {
+        console.error("Login error:", error);
+        app.showNotification(error.message || "Login gagal", "error");
+        this.setLoadingState(loginButton, false);
+      }
+    });
+
+    usernameInput.focus();
+
+    passwordInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        form.dispatchEvent(new Event("submit"));
+      }
+    });
+  },
+
+  setLoadingState(button, isLoading) {
+    if (isLoading) {
+      button.disabled = true;
+      button.innerHTML = `
+                <i class="fas fa-spinner fa-spin"></i>
+                Memuat...
+            `;
+      button.classList.add("loading");
+    } else {
+      button.disabled = false;
+      button.innerHTML = `
+                <i class="fas fa-sign-in-alt"></i>
+                Login
+            `;
+      button.classList.remove("loading");
     }
+  },
 };

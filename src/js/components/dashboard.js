@@ -10,26 +10,99 @@ export const DashboardComponent = {
   patients: [],
   doctors: [],
   queues: [],
+  isLoading: false,
 
   async fetchData(token) {
+    if (this.isLoading) return;
+    this.isLoading = true;
+
     try {
-      this.users = await getUsers(token);
-      this.patients = await getPatients(token);
-      this.doctors = await getDoctors(token);
-      const queues = await getQueues(token);
+      this.updateLoadingState(true);
+
+      const [users, patients, doctors, queues] = await Promise.all([
+        getUsers(token),
+        getPatients(token),
+        getDoctors(token),
+        getQueues(token),
+      ]);
+
+      this.users = users;
+      this.patients = patients;
+      this.doctors = doctors;
       this.queues = await this.processQueueData(queues);
+
+      this.updateContent();
     } catch (error) {
       console.error("Gagal mengambil data dashboard:", error);
       this.users = [];
       this.patients = [];
       this.doctors = [];
       this.queues = [];
+
+      this.updateErrorState(error.message);
+    } finally {
+      this.isLoading = false;
+      this.updateLoadingState(false);
+    }
+  },
+
+  updateLoadingState(loading) {
+    const dashboardContainer = document.querySelector(".fade-in");
+    if (dashboardContainer) {
+      if (loading) {
+        dashboardContainer.classList.add("loading");
+      } else {
+        dashboardContainer.classList.remove("loading");
+      }
+    }
+  },
+
+  updateErrorState(errorMessage) {
+    const dashboardContainer = document.querySelector(".fade-in");
+    if (dashboardContainer) {
+      dashboardContainer.innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">
+              <i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i>
+              Error
+            </h2>
+          </div>
+          <div style="padding: 2rem; text-align: center;">
+            <p style="color: #ef4444; margin-bottom: 1rem;">${errorMessage}</p>
+            <button onclick="location.reload()" class="btn btn-primary">
+              <i class="fas fa-refresh"></i>
+              Muat Ulang
+            </button>
+          </div>
+        </div>
+      `;
+    }
+  },
+
+  updateContent() {
+    const stats = this.getStats();
+
+    const statCards = document.querySelectorAll(".stat-number");
+    if (statCards.length >= 4) {
+      statCards[0].textContent = stats.totalPatients;
+      statCards[1].textContent = stats.queueToday;
+      statCards[2].textContent = stats.activeDoctors;
+      statCards[3].textContent = stats.completedToday;
+    }
+
+    const recentQueueContainer = document.getElementById("recentQueue");
+    if (recentQueueContainer) {
+      recentQueueContainer.innerHTML = this.renderRecentQueue();
+    }
+
+    const doctorStatusContainer = document.getElementById("doctorStatus");
+    if (doctorStatusContainer) {
+      doctorStatusContainer.innerHTML = this.renderDoctorStatus();
     }
   },
 
   render() {
-    const stats = this.getStats();
-
     return `
         <div class="fade-in">
             <div class="card">
@@ -45,19 +118,19 @@ export const DashboardComponent = {
 
                 <div class="queue-stats">
                     <div class="stat-card">
-                        <div class="stat-number">${stats.totalPatients}</div>
+                        <div class="stat-number loading-placeholder">-</div>
                         <div class="stat-label">Total Pasien</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-number">${stats.queueToday}</div>
+                        <div class="stat-number loading-placeholder">-</div>
                         <div class="stat-label">Antrian Hari Ini</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-number">${stats.activeDoctors}</div>
+                        <div class="stat-number loading-placeholder">-</div>
                         <div class="stat-label">Dokter Aktif</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-number">${stats.completedToday}</div>
+                        <div class="stat-number loading-placeholder">-</div>
                         <div class="stat-label">Selesai Hari Ini</div>
                     </div>
                 </div>
@@ -72,7 +145,10 @@ export const DashboardComponent = {
                         </h3>
                     </div>
                     <div id="recentQueue">
-                        ${this.renderRecentQueue()}
+                        <div class="loading-state">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>Memuat data antrian...</p>
+                        </div>
                     </div>
                 </div>
 
@@ -84,7 +160,10 @@ export const DashboardComponent = {
                         </h3>
                     </div>
                     <div id="doctorStatus">
-                        ${this.renderDoctorStatus()}
+                        <div class="loading-state">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>Memuat data dokter...</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -259,7 +338,14 @@ export const DashboardComponent = {
   async init(app) {
     this.app = app;
     const token = this.app.currentUser.token;
+
     await this.fetchData(token);
+
+    this.refreshInterval = setInterval(async () => {
+      if (this.app.currentUser && this.app.currentUser.token) {
+        await this.fetchData(this.app.currentUser.token);
+      }
+    }, 30000);
   },
 
   destroy() {
