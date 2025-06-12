@@ -1,4 +1,3 @@
-// Simple SPA Router Class
 export class Router {
     constructor() {
         this.routes = {};
@@ -17,10 +16,8 @@ export class Router {
     navigate(path, params = {}) {
         this.params = params;
         
-        // Update URL without reloading page
         history.pushState({ path, params }, '', `#${path}`);
         
-        // Execute route handler
         this.executeRoute(path);
     }
 
@@ -34,13 +31,11 @@ export class Router {
     }
 
     start() {
-        // Handle browser back/forward buttons
         window.addEventListener('popstate', (event) => {
             if (event.state && event.state.path) {
                 this.params = event.state.params || {};
                 this.executeRoute(event.state.path);
             } else {
-                // Handle initial page load or direct navigation
                 const hash = window.location.hash.slice(1);
                 if (hash) {
                     this.executeRoute(hash);
@@ -50,7 +45,6 @@ export class Router {
             }
         });
 
-        // Handle initial route
         const hash = window.location.hash.slice(1);
         if (hash) {
             this.executeRoute(hash);

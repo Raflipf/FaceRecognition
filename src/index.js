@@ -1,12 +1,9 @@
-// Import CSS
 import "./styles/main.css";
 
-// Import all components and utilities
 import { Storage } from "./js/utils/storage.js";
 import { Camera } from "./js/utils/camera.js";
 import { Router } from "./js/router.js";
 
-// Import all components
 import { LoginComponent } from "./js/components/login.js";
 import { DashboardComponent } from "./js/components/dashboard.js";
 import { FaceRecognitionComponent } from "./js/components/faceRecognition.js";
@@ -15,7 +12,6 @@ import { AddPatientComponent } from "./js/components/addPatient.js";
 import { QueueComponent } from "./js/components/queue.js";
 import { PatientsComponent } from "./js/components/patients.js";
 
-// Main Application Class
 import { loginUser } from "./js/utils/api.js";
 
 class HospitalApp {
@@ -32,26 +28,21 @@ class HospitalApp {
   }
 
   init() {
-    // Initialize storage
+
     this.storage.init();
 
-    // Check if user is already logged in
     this.checkAuthState();
 
-    // Initialize router
     this.setupRoutes();
 
-    // Setup event listeners
     this.setupEventListeners();
 
-    // Start the application
     this.start();
   }
 
   checkAuthState() {
     const token = localStorage.getItem("authToken");
     if (token) {
-      // For simplicity, assume token is valid
       const savedUser = this.storage.get("currentUser");
       if (savedUser) {
         this.currentUser = savedUser;
@@ -61,7 +52,6 @@ class HospitalApp {
   }
 
   setupRoutes() {
-    // Public routes
     this.router.addRoute("login", () => {
       if (this.isAuthenticated) {
         this.router.navigate("dashboard");
@@ -70,7 +60,6 @@ class HospitalApp {
       this.showLogin();
     });
 
-    // Protected routes
     this.router.addRoute("dashboard", () => {
       this.requireAuth(() => this.showDashboard());
     });
@@ -95,7 +84,6 @@ class HospitalApp {
       this.requireAuth(() => this.showQueue());
     });
 
-    // Default route
     this.router.setDefaultRoute(() => {
       if (this.isAuthenticated) {
         this.router.navigate("dashboard");
@@ -106,26 +94,22 @@ class HospitalApp {
   }
 
   setupEventListeners() {
-    // Logout button
     document.addEventListener("click", (e) => {
       if (e.target.id === "logoutBtn" || e.target.closest("#logoutBtn")) {
         this.logout();
       }
     });
 
-    // Navigation links
     document.addEventListener("click", (e) => {
       const navLink = e.target.closest(".nav-link");
       if (navLink) {
         e.preventDefault();
 
-        // Update active navigation
         document.querySelectorAll(".nav-link").forEach((link) => {
           link.classList.remove("active");
         });
         navLink.classList.add("active");
 
-        // Navigate to route
         const route = navLink.dataset.route;
         if (route) {
           this.router.navigate(route);
@@ -133,7 +117,6 @@ class HospitalApp {
       }
     });
 
-    // Modal close events
     document.addEventListener("click", (e) => {
       if (e.target.id === "modalClose" || e.target.id === "modalOverlay") {
         this.hideModal();
@@ -153,18 +136,14 @@ class HospitalApp {
   }
 
   start() {
-    // Start the router
     this.router.start();
   }
 
-  // Authentication methods
   async login(credentials) {
     this.showLoading();
     try {
       const token = await loginUser(credentials);
-      // Save token to localStorage
       localStorage.setItem("authToken", token);
-      // Save user info (for now, just username)
       this.currentUser = {
         username: credentials.username,
         token: token,
@@ -196,7 +175,6 @@ class HospitalApp {
     );
   }
 
-  // Page rendering methods
   showLogin() {
     this.hideHeader();
     document.getElementById("app-content").innerHTML = LoginComponent.render();
@@ -222,7 +200,6 @@ class HospitalApp {
     document.getElementById("app-content").innerHTML =
       PatientsComponent.render();
     PatientsComponent.init(this);
-    // Make component available globally for onclick handlers
     window.patientsComponent = PatientsComponent;
   }
 
@@ -247,7 +224,6 @@ class HospitalApp {
     QueueComponent.init(this);
   }
 
-  // UI utility methods
   showHeader() {
     document.getElementById("header").style.display = "block";
   }
@@ -271,7 +247,6 @@ class HospitalApp {
     const confirmBtn = document.getElementById("modalConfirm");
     const cancelBtn = document.getElementById("modalCancel");
 
-    // Remove previous event listeners
     const newConfirmBtn = confirmBtn.cloneNode(true);
     const newCancelBtn = cancelBtn.cloneNode(true);
     confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
@@ -301,7 +276,6 @@ class HospitalApp {
   }
 }
 
-// Initialize the application when DOM is loaded
 document.addEventListener("DOMContentLoaded", () => {
   window.hospitalApp = new HospitalApp();
 });

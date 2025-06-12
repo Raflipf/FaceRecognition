@@ -666,7 +666,6 @@ export const AddPatientComponent = {
       status: "active",
     };
 
-    // Hapus field undefined agar tidak mengganggu backend
     Object.keys(patientData).forEach((key) => {
       if (patientData[key] === undefined) {
         delete patientData[key];
@@ -688,11 +687,10 @@ export const AddPatientComponent = {
         }
       );
 
-      // ✅ Kirim embedding hanya jika addPatient sukses dan ada 5 foto
       if (this.capturedPhotos.length === 5) {
         try {
           const embeddingResult = await generateFaceEmbedding({
-            patient_id: patientData.name, // ← gunakan name sebagai pengganti ID
+            patient_id: patientData.name, //
             name: patientData.name,
             photos: this.capturedPhotos,
           });

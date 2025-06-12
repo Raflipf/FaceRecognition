@@ -1,4 +1,3 @@
-// API Utility Module
 const API_BASE_URL = "https://backend-mediface.vercel.app/api";
 
 async function loginUser(credentials) {
