@@ -1,6 +1,7 @@
 // API Utility Module
 const API_BASE_URL = "https://backend-mediface.vercel.app/api";
 
+
 async function loginUser(credentials) {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
@@ -291,6 +292,30 @@ async function addQueue(queueData, token) {
     throw error;
   }
 }
+async function recognizeFace(photo) {
+  const RECOGNIZE_API_URL =
+    "https://web-production-9ea44.up.railway.app/recognize";
+
+  try {
+    const response = await fetch(RECOGNIZE_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ photo }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error?.error || "Gagal mengenali wajah");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("recognizeFace error:", error);
+    throw error;
+  }
+}
 
 async function updateQueue(id, queueData, token) {
   try {
@@ -358,4 +383,5 @@ export {
   addQueue,
   updateQueue,
   generateFaceEmbedding,
+  recognizeFace,
 };
