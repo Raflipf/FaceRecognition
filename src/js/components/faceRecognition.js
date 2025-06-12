@@ -1,7 +1,6 @@
 import { Camera } from "../utils/camera.js";
 import { Storage } from "../utils/storage.js";
-import { recognizeFace, getPatientById } from "../../../js/utils/api.js";
-// pastikan ini di atas
+import { recognizeFace, getPatientByName } from "../../../js/utils/api.js";
 
 export const FaceRecognitionComponent = {
   render() {
@@ -131,9 +130,8 @@ export const FaceRecognitionComponent = {
       this.confirmIdentification(false)
     );
   },
-  processFaceRecognition: async function (imageDataUrl) {
+  async processFaceRecognition(imageDataUrl) {
     const resultEl = document.getElementById("recognitionResult");
-
     resultEl.className = "recognition-result pending";
     resultEl.innerHTML = `
       <i class="fas fa-spinner fa-spin"></i>
@@ -142,25 +140,21 @@ export const FaceRecognitionComponent = {
 
     try {
       const recognition = await recognizeFace(imageDataUrl);
+      console.log("Recognition result:", recognition);
 
       if (recognition.status === "matched") {
-        const patients = Storage.get("patients") || [];
-        const matchedPatient = patients.find(
-          (p) => p.id === recognition.patient_id
-        );
+        const token = this.app.getAuthToken();
+        const matchedPatient = await getPatientByName(recognition.name, token);
 
         if (matchedPatient) {
-          this.showRecognitionResult(
-            matchedPatient,
-            (1 - recognition.distance) * 100
-          );
+          this.showRecognitionResult(matchedPatient, recognition.distance);
         } else {
           this.showRecognitionResult(
             {
               name: recognition.name,
               nik: "-",
               birthDate: "-",
-              id: recognition.patient_id,
+              id: null,
             },
             (1 - recognition.distance) * 100
           );
@@ -228,8 +222,7 @@ export const FaceRecognitionComponent = {
 
     this.processFaceRecognition(imageDataUrl);
   },
-
-  showRecognitionResult(patient, confidence) {
+  showRecognitionResult(patient, distance) {
     this.recognizedPatient = patient;
 
     document.getElementById("recognizedName").textContent = patient.name;
@@ -237,12 +230,14 @@ export const FaceRecognitionComponent = {
     document.getElementById("recognizedBirth").textContent = new Date(
       patient.birthDate
     ).toLocaleDateString("id-ID");
-    document.getElementById("confidenceScore").textContent = confidence + "%";
+
+    document.getElementById(
+      "confidenceScore"
+    ).textContent = `Distance: ${distance.toFixed(6)}`;
 
     document.getElementById("capturedSection").style.display = "none";
     document.getElementById("verificationSection").style.display = "block";
   },
-
   showNoMatch() {
     const resultEl = document.getElementById("recognitionResult");
     resultEl.className = "recognition-result";

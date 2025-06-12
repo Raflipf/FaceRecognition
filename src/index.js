@@ -27,6 +27,9 @@ class HospitalApp {
 
     this.init();
   }
+  getAuthToken() {
+    return localStorage.getItem("authToken");
+  }
 
   init() {
     // Initialize storage

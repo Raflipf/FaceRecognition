@@ -1,7 +1,6 @@
 // API Utility Module
 const API_BASE_URL = "https://backend-mediface.vercel.app/api";
 
-
 async function loginUser(credentials) {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
@@ -28,6 +27,27 @@ async function loginUser(credentials) {
     }
     throw error;
   }
+}
+export async function getPatientByName(name, token) {
+  const response = await fetch(
+    `https://backend-mediface.vercel.app/api/patients`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Gagal mengambil data pasien");
+  }
+
+  const patients = await response.json();
+
+  // Cocokkan nama (bisa disesuaikan pakai includes atau equals)
+  return patients.find((p) => p.name.toLowerCase() === name.toLowerCase());
 }
 
 async function addPatient(patientData, token) {
