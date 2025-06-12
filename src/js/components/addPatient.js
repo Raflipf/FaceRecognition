@@ -723,7 +723,7 @@ export const AddPatientComponent = {
     Storage.set("patients", patients);
 
     return localPatient;
-  },
+  }, 
 
   destroy() {
     if (this.currentStream) {
