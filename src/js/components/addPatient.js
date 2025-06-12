@@ -1,6 +1,6 @@
 import { Camera } from "../utils/camera.js";
 import { Storage } from "../utils/storage.js";
-import { addPatient } from "../../../js/utils/api.js";
+import { addPatient, generateFaceEmbedding } from "../../../js/utils/api.js";
 
 export const AddPatientComponent = {
   render() {
@@ -474,7 +474,7 @@ export const AddPatientComponent = {
 
     document.getElementById("retakePhotoBtn").style.display = "inline-flex";
   },
-  
+
   updateCaptureButton() {
     const captureBtn = document.getElementById("photoCapture");
     const count = this.capturedPhotos ? this.capturedPhotos.length : 0;
@@ -645,7 +645,6 @@ export const AddPatientComponent = {
   async savePatientToBackend() {
     const form = document.getElementById("addPatientForm");
     const formData = new FormData(form);
-
     const token = this.getAuthToken();
 
     if (!token) {
@@ -667,11 +666,14 @@ export const AddPatientComponent = {
       status: "active",
     };
 
+    // Hapus field undefined agar tidak mengganggu backend
     Object.keys(patientData).forEach((key) => {
       if (patientData[key] === undefined) {
         delete patientData[key];
       }
     });
+
+    this.app.showLoading("Menyimpan data pasien...");
 
     try {
       const response = await addPatient(patientData, token);
@@ -680,11 +682,29 @@ export const AddPatientComponent = {
 
       this.app.showModal(
         "Pasien Berhasil Ditambahkan",
-        `Pasien ${patientData.name} telah berhasil didaftarkan dalam sistem untuk face recognition.\n\nNIK: ${patientData.nik}`,
+        `Pasien ${patientData.name} telah berhasil didaftarkan.\n\nNIK: ${patientData.nik}`,
         () => {
           this.app.router.navigate("dashboard");
         }
       );
+
+      // ✅ Kirim embedding hanya jika addPatient sukses dan ada 5 foto
+      if (this.capturedPhotos.length === 5) {
+        try {
+          const embeddingResult = await generateFaceEmbedding({
+            patient_id: patientData.name, // ← gunakan name sebagai pengganti ID
+            name: patientData.name,
+            photos: this.capturedPhotos,
+          });
+          console.log("📤 Embedding berhasil dikirim:", embeddingResult);
+        } catch (embedError) {
+          console.warn("Gagal kirim embedding:", embedError.message);
+          this.app.showNotification(
+            "Pasien disimpan, tapi gagal kirim embedding",
+            "warning"
+          );
+        }
+      }
 
       this.savePatientToLocalStorage(patientData, response);
     } catch (error) {
@@ -723,7 +743,7 @@ export const AddPatientComponent = {
     Storage.set("patients", patients);
 
     return localPatient;
-  }, 
+  },
 
   destroy() {
     if (this.currentStream) {

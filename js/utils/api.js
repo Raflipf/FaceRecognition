@@ -319,6 +319,30 @@ async function updateQueue(id, queueData, token) {
     throw error;
   }
 }
+async function generateFaceEmbedding({ patient_id, name, photos }) {
+  const EMBEDDING_API_URL =
+    "https://web-production-9ea44.up.railway.app/generate-embedding";
+
+  try {
+    const response = await fetch(EMBEDDING_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ patient_id, name, photos }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error?.error || "Gagal generate embedding");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("generateFaceEmbedding error:", error);
+    throw error;
+  }
+}
 
 export {
   loginUser,
@@ -333,4 +357,5 @@ export {
   getQueues,
   addQueue,
   updateQueue,
+  generateFaceEmbedding,
 };
