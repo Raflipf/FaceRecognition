@@ -1,4 +1,5 @@
 import { Storage } from "../utils/storage.js";
+import * as api from "../../../js/utils/api.js";
 
 export const PatientRecordComponent = {
   async render(patientId) {
@@ -31,7 +32,6 @@ export const PatientRecordComponent = {
     const patientIdToUse = patient._id || patient.id;
     const medicalHistory = this.getMedicalHistory(patientIdToUse);
 
-    // Load doctors data first before rendering
     await this.loadDoctors();
 
     return `
@@ -165,9 +165,19 @@ export const PatientRecordComponent = {
   async getPatient(patientId) {
     console.log("PatientRecordComponent.getPatient called with ID:", patientId);
 
+    if (!patientId || patientId === "undefined") {
+      console.log("Invalid patientId provided");
+      return null;
+    }
+
     const recognizedPatient = Storage.get("currentRecognizedPatient");
     if (recognizedPatient) {
       console.log("Found recognized patient:", recognizedPatient.name);
+      const validId = recognizedPatient._id || recognizedPatient.id;
+      if (!validId) {
+        console.log("Recognized patient has no valid ID");
+        return null;
+      }
       Storage.remove("currentRecognizedPatient");
       return recognizedPatient;
     }
@@ -306,15 +316,15 @@ export const PatientRecordComponent = {
 
   renderDoctorOptions() {
     console.log("renderDoctorOptions called, doctors:", this.app?.doctors);
-    
+
     if (!this.app || !this.app.doctors || this.app.doctors.length === 0) {
       console.log("No doctors available");
       return '<option value="" disabled>Loading dokter...</option>';
     }
-    
+
     const doctors = this.app.doctors;
     console.log("Rendering options for", doctors.length, "doctors");
-    
+
     const options = doctors
       .filter((doctor) => doctor.status === "available")
       .map(
@@ -325,7 +335,7 @@ export const PatientRecordComponent = {
             `
       )
       .join("");
-      
+
     console.log("Generated options:", options);
     return options;
   },
@@ -377,7 +387,6 @@ export const PatientRecordComponent = {
     }
 
     console.log("Patient loaded:", this.patient.name);
-    // Load doctors after DOM is ready
     await this.loadDoctors();
     this.setupEventListeners();
   },
@@ -389,18 +398,17 @@ export const PatientRecordComponent = {
         console.error("App not initialized");
         return;
       }
-      
+
       const token = this.app.currentUser?.token;
       if (!token) {
         console.error("No token available");
         return;
       }
-      
+
       const api = await import("../../../js/utils/api.js");
       this.app.doctors = await api.getDoctors(token);
       console.log("Doctors loaded:", this.app.doctors.length);
-      
-      // Update dropdown setelah data dimuat
+
       this.updateDoctorDropdown();
     } catch (error) {
       console.error("Error loading doctors:", error);
@@ -417,16 +425,18 @@ export const PatientRecordComponent = {
   updateDoctorDropdown() {
     const doctorSelect = document.getElementById("doctorSelect");
     if (!doctorSelect) return;
-    
+
     console.log("Updating doctor dropdown...");
-    
-    // Clear existing options
+
     doctorSelect.innerHTML = '<option value="">-- Pilih Dokter --</option>';
-    
-    // Add new options
+
     const optionsHTML = this.renderDoctorOptions();
-    if (optionsHTML && optionsHTML !== '<option value="" disabled>Loading dokter...</option>') {
-      doctorSelect.innerHTML = '<option value="">-- Pilih Dokter --</option>' + optionsHTML;
+    if (
+      optionsHTML &&
+      optionsHTML !== '<option value="" disabled>Loading dokter...</option>'
+    ) {
+      doctorSelect.innerHTML =
+        '<option value="">-- Pilih Dokter --</option>' + optionsHTML;
       console.log("Dropdown updated with", this.app.doctors.length, "doctors");
     }
   },
@@ -476,19 +486,36 @@ export const PatientRecordComponent = {
     try {
       this.app.showLoading();
       const token = this.app.currentUser.token;
-      const api = await import("../../../js/utils/api.js");
 
-      if (!window.queueComponent) {
-        console.error("QueueComponent is not available globally.");
-        this.app.showNotification(
-          "Terjadi kesalahan: Komponen antrian tidak ditemukan.",
-          "error"
-        );
-        return;
-      }
+      const currentQueues = await api.getQueues(token);
 
-      await window.queueComponent.loadQueues();
-      const nextQueueNumber = window.queueComponent.getNextQueueNumber(
+      const getNextQueueNumberForDoctor = (queues, doctorId) => {
+        const today = new Date();
+        const todayFormatted = today.toISOString().split("T")[0];
+
+        const todayQueuesForDoctor = queues.filter((q) => {
+          const queueDate = new Date(q.timestamp).toISOString().split("T")[0];
+          const matchesDoctor = q.doctor_id?.toString() === doctorId.toString();
+          return (
+            queueDate === todayFormatted &&
+            matchesDoctor &&
+            q.status !== "completed"
+          );
+        });
+
+        if (todayQueuesForDoctor.length === 0) {
+          return 1;
+        }
+
+        const maxQueueNumber = todayQueuesForDoctor.reduce((max, q) => {
+          return Math.max(max, Number(q.queueNumber) || 0);
+        }, 0);
+
+        return maxQueueNumber + 1;
+      };
+
+      const nextQueueNumber = getNextQueueNumberForDoctor(
+        currentQueues,
         doctor._id
       );
 
@@ -534,8 +561,7 @@ export const PatientRecordComponent = {
         );
       }
     } finally {
-      this.app.hideLoading(); 
+      this.app.hideLoading();
     }
   },
-
 };

@@ -147,17 +147,19 @@ export const FaceRecognitionComponent = {
         const matchedPatient = await getPatientByName(recognition.name, token);
 
         if (matchedPatient) {
+          if (!matchedPatient._id && !matchedPatient.id) {
+            throw new Error(
+              "Pasien dikenali tetapi tidak memiliki ID yang valid"
+            );
+          }
           this.showRecognitionResult(matchedPatient, recognition.distance);
         } else {
-          this.showRecognitionResult(
-            {
-              name: recognition.name,
-              nik: "-",
-              birthDate: "-",
-              id: null,
-            },
-            (1 - recognition.distance) * 100
+          this.showNoMatch();
+          this.app.showNotification(
+            "Pasien dikenali tetapi tidak ditemukan dalam database",
+            "error"
           );
+          return;
         }
       } else {
         this.showNoMatch();
@@ -264,10 +266,21 @@ export const FaceRecognitionComponent = {
 
   confirmIdentification(isCorrect) {
     if (isCorrect && this.recognizedPatient) {
+      if (!this.recognizedPatient._id && !this.recognizedPatient.id) {
+        this.app.showNotification(
+          "Pasien dikenali tetapi tidak memiliki ID yang valid",
+          "error"
+        );
+        this.retakePhoto();
+        return;
+      }
+
       Storage.set("currentRecognizedPatient", this.recognizedPatient);
 
+      const patientId = this.recognizedPatient._id || this.recognizedPatient.id;
+
       this.app.router.navigate("patient-record", {
-        patientId: this.recognizedPatient.id,
+        patientId: patientId,
       });
     } else {
       this.app.showNotification(
